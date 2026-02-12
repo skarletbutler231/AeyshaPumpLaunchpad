@@ -1,0 +1,10 @@
+@font-face {
+  font-family: "Conthrax-SB";
+  src: url("/assets/font/conthrax-sb.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-conthrax {
+  font-family: "Conthrax-SB";
+}

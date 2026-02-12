@@ -1,0 +1,6 @@
+export const RAYDIUMPOOL_V4_ADDRESS = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+export const RAYDIUM_AUTHORITY_V4_ADDRESS = "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1";
+export const RAYDIUM_AMM_ROUTING_ADDRESS = "routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS";
+export const JUPITOR_ADDRESS = "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4";
+export const programID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+export const PUMPFUN_UPDATE_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";

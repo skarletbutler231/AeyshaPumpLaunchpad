@@ -1,0 +1,43 @@
+<svg width="85" height="84" viewBox="0 0 85 84" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+    <g filter="url(#filter0_b_4524_44261)">
+        <rect x="0.5" width="84" height="84" rx="16" fill="url(#paint0_linear_4524_44261)" fill-opacity="0.16"/>
+        <rect x="1" y="0.5" width="83" height="83" rx="15.5" stroke="url(#paint1_linear_4524_44261)" stroke-opacity="0.5"/>
+    </g>
+    <g clip-path="url(#clip0_4524_44261)">
+        <path d="M52.603 32.2621L56.41 47.4991C56.5779 48.1653 56.5107 48.8691 56.22 49.4916C55.9292 50.1141 55.4326 50.6172 54.814 50.9161L44.26 55.9651C43.8663 56.1539 43.4352 56.2519 42.9985 56.2519C42.5618 56.2519 42.1307 56.1539 41.737 55.9651L31.1845 50.9176C30.5659 50.6187 30.0693 50.1156 29.7785 49.4931C29.4878 48.8706 29.4206 48.1668 29.5885 47.5006L33.397 32.2621C33.5056 31.8257 33.7119 31.4196 34.0003 31.0745C34.2887 30.7295 34.6518 30.4544 35.062 30.2701L41.806 27.2551C42.1812 27.0876 42.5876 27.001 42.9985 27.001C43.4094 27.001 43.8158 27.0876 44.191 27.2551L50.935 30.2701C51.766 30.6391 52.3795 31.3741 52.603 32.2621Z" stroke="url(#paint2_linear_4524_44261)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M52 31.23L44.203 34.716C43.825 34.885 43.4156 34.9723 43.0015 34.9723C42.5874 34.9723 42.178 34.885 41.8 34.716L34 31.2285" stroke="url(#paint3_linear_4524_44261)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M43 34.98V56.25" stroke="url(#paint4_linear_4524_44261)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <defs>
+        <filter id="filter0_b_4524_44261" x="-14.5" y="-15" width="114" height="114" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+            <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+            <feGaussianBlur in="BackgroundImageFix" stdDeviation="7.5"/>
+            <feComposite in2="SourceAlpha" operator="in" result="effect1_backgroundBlur_4524_44261"/>
+            <feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_4524_44261" result="shape"/>
+        </filter>
+        <linearGradient id="paint0_linear_4524_44261" x1="-4.16035" y1="-14.2652" x2="153.329" y2="158.095" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear_4524_44261" x1="-4.16035" y1="-14.2652" x2="153.329" y2="158.095" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint2_linear_4524_44261" x1="27.9999" y1="22.0335" x2="83.0622" y2="77.6628" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint3_linear_4524_44261" x1="33.0014" y1="30.5927" x2="35.5867" y2="44.1968" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint4_linear_4524_44261" x1="42.9445" y1="31.3678" x2="47.0542" y2="31.5793" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <clipPath id="clip0_4524_44261">
+            <rect width="36" height="36" fill="white" transform="translate(25 24)"/>
+        </clipPath>
+    </defs>
+</svg>

@@ -1,0 +1,38 @@
+<svg width="84" height="84" viewBox="0 0 84 84" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+    <g filter="url(#filter0_b_4524_44241)">
+        <rect width="84" height="84" rx="16" fill="url(#paint0_linear_4524_44241)" fill-opacity="0.16"/>
+        <rect x="0.5" y="0.5" width="83" height="83" rx="15.5" stroke="url(#paint1_linear_4524_44241)" stroke-opacity="0.5"/>
+    </g>
+    <g clip-path="url(#clip0_4524_44241)">
+        <path d="M53.8125 33.4051C54.328 33.6983 54.7561 34.1236 55.0527 34.6372C55.3493 35.1507 55.5037 35.7341 55.5 36.3271V47.2531C55.5 48.4666 54.8355 49.5856 53.763 50.1751L43.638 56.5801C43.136 56.8557 42.5726 57.0002 42 57.0002C41.4274 57.0002 40.864 56.8557 40.362 56.5801L30.237 50.1751C29.7122 49.8884 29.2742 49.4659 28.9686 48.9518C28.663 48.4378 28.5012 47.8511 28.5 47.2531V36.3256C28.5 35.1121 29.1645 33.9946 30.237 33.4051L40.362 27.4351C40.8788 27.1502 41.4593 27.0007 42.0495 27.0007C42.6397 27.0007 43.2202 27.1502 43.737 27.4351L53.862 33.4051H53.8125Z" stroke="url(#paint2_linear_4524_44241)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M37.5 42C37.5 43.1935 37.9741 44.3381 38.818 45.182C39.6619 46.0259 40.8065 46.5 42 46.5C43.1935 46.5 44.3381 46.0259 45.182 45.182C46.0259 44.3381 46.5 43.1935 46.5 42C46.5 40.8065 46.0259 39.6619 45.182 38.818C44.3381 37.9741 43.1935 37.5 42 37.5C40.8065 37.5 39.6619 37.9741 38.818 38.818C37.9741 39.6619 37.5 40.8065 37.5 42Z" stroke="url(#paint3_linear_4524_44241)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <defs>
+        <filter id="filter0_b_4524_44241" x="-15" y="-15" width="114" height="114" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+            <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+            <feGaussianBlur in="BackgroundImageFix" stdDeviation="7.5"/>
+            <feComposite in2="SourceAlpha" operator="in" result="effect1_backgroundBlur_4524_44241"/>
+            <feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_4524_44241" result="shape"/>
+        </filter>
+        <linearGradient id="paint0_linear_4524_44241" x1="-4.66035" y1="-14.2652" x2="152.829" y2="158.095" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear_4524_44241" x1="-4.66035" y1="-14.2652" x2="152.829" y2="158.095" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint2_linear_4524_44241" x1="27.002" y1="21.9061" x2="83.4698" y2="77.5271" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="paint3_linear_4524_44241" x1="37.0007" y1="35.9716" x2="53.8745" y2="54.4388" gradientUnits="userSpaceOnUse">
+            <stop offset="0.119467" stop-color="#4B65F1"/>
+            <stop offset="1" stop-color="#FA03FF" stop-opacity="0.2"/>
+        </linearGradient>
+        <clipPath id="clip0_4524_44241">
+            <rect width="36" height="36" fill="white" transform="translate(24 24)"/>
+        </clipPath>
+    </defs>
+</svg>

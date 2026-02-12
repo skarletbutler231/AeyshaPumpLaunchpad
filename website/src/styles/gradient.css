@@ -1,0 +1,39 @@
+.text-gradient-silver {
+    background-image: linear-gradient(0deg, #CDCDCD 1.92%, #2F2F35 98.08%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+    background-image: linear-gradient(180deg, #C18A21 0%, #D8B778 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-diamond {
+    background-image: linear-gradient(180deg, #134B7F -5.47%, #9CBCE3 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.bg-gradient-black-to-white {
+    background-image: linear-gradient(140deg, #FFFFFF00, #FFFFFF48);
+}
+
+.card-div {
+    /* Gradient as the bottom layer */
+    background: linear-gradient(to bottom, #0B0C0F, #151516),
+
+        /* Image as the top layer */
+        url(/assets/img/cubes.png);
+    background-blend-mode: color;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.ranger-bg {
+    background-image: linear-gradient(to right, red 20%, blue 80%)
+}

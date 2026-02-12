@@ -1,0 +1,480 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Poppins, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: rgba(255, 255, 255);
+  background-color: #040921;
+  background-image: url(/assets/rebranding/muscle/img_bg.png);
+  background-size: cover;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* For Chrome, Safari, Edge, and Opera */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* For Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* For Webkit (Chrome, Safari, etc.) */
+::-webkit-scrollbar {
+  width: 6px;
+  /* width of the entire scrollbar */
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000FF;
+  /* color of the tracking area */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #666666;
+  /* color of the scroll thumb */
+  border-radius: 16px;
+  /* roundness of the scroll thumb */
+  border: 3px solid #666666;
+  /* creates padding around scroll thumb */
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+  /* "auto" or "thin" */
+  scrollbar-color: #666666 #00000055;
+  /* thumb and track color */
+}
+
+/* Hover effect for webkit scrollbar thumb */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #888888;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+.gradient-special-text {
+  background: linear-gradient(80deg, #f44d9f 0%, #4f56df 47.4%, #4ce0f9 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.font-16 {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: -0.02em;
+  text-align: left;
+  color: white;
+}
+
+.font-14-special {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 16.8px;
+  text-align: left;
+  color: #ffffffb2;
+}
+
+.inter-100 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 100;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-200 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 200;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-300 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-400 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-500 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-600 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-700 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-800 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.inter-900 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+  font-variation-settings: "slnt" 0;
+}
+
+.space-grotesk-300 {
+  font-family: "Space Grotesk", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.space-grotesk-400 {
+  font-family: "Space Grotesk", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.space-grotesk-500 {
+  font-family: "Space Grotesk", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.space-grotesk-600 {
+  font-family: "Space Grotesk", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.space-grotesk-700 {
+  font-family: "Space Grotesk", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.poppins-thin {
+  font-family: "Poppins", sans-serif;
+  font-weight: 100;
+  font-style: normal;
+}
+
+.poppins-extralight {
+  font-family: "Poppins", sans-serif;
+  font-weight: 200;
+  font-style: normal;
+}
+
+.poppins-light {
+  font-family: "Poppins", sans-serif;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.poppins-regular {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.poppins-medium {
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.poppins-semibold {
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.poppins-bold {
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.poppins-extrabold {
+  font-family: "Poppins", sans-serif;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.poppins-black {
+  font-family: "Poppins", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.poppins-thin-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 100;
+  font-style: italic;
+}
+
+.poppins-extralight-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 200;
+  font-style: italic;
+}
+
+.poppins-light-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 300;
+  font-style: italic;
+}
+
+.poppins-regular-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.poppins-medium-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.poppins-semibold-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.poppins-bold-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.poppins-extrabold-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 800;
+  font-style: italic;
+}
+
+.poppins-black-italic {
+  font-family: "Poppins", sans-serif;
+  font-weight: 900;
+  font-style: italic;
+}
+
+.button-bg-gradient {
+  background: linear-gradient(
+    137.58deg,
+    #111111 11.98%,
+    rgba(250, 3, 3, 0.2) 185.22%
+  );
+}
+
+.container {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #ffffff08;
+}
+
+.container-gradient {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(to bottom, #ffffff00, #88888826);
+  border: 1px solid #ffffff08;
+  border-radius: 12px;
+}
+
+.blue-purple-gradient {
+  background: linear-gradient(90deg, #111111 0%, #811212 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-main {
+  background-color: transparent !important;
+  background: linear-gradient(
+    120deg,
+    #111111,
+    #563333,
+    #852121,
+    #642222,
+    #111111
+  );
+  background-size: 200% 100% !important;
+  -webkit-transition: background 0.25s ease-in-out 0s !important;
+  transition: background 0.25s ease-in-out 0s !important;
+  color: #fff;
+}
+
+.bg-main:hover {
+  background-position: 100% 0 !important;
+}
+
+.border-main-gradient {
+  /* border-radius: 0.75rem; */
+  background-color: #0a0a0a !important;
+  /* font-family: Inter, sans-serif !important; */
+  font-weight: 600 !important;
+  margin: 0 !important;
+  /* padding: 0 1.5rem !important; */
+  min-height: 2.75rem;
+  color: #fff !important;
+  /* font-size: 0.875rem; */
+}
+.border-main-gradient:after {
+  content: "";
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  position: absolute;
+  z-index: -1;
+  background: linear-gradient(
+    120deg,
+    #111111,
+    #563333,
+    #852121,
+    #642222,
+    #111111
+  );
+  /* border-radius: 0.75rem; */
+  background-size: 200% 100% !important;
+  -webkit-transition: background 0.25s ease-in-out 0s !important;
+  transition: background 0.25s ease-in-out 0s !important;
+  left: -1px;
+  top: -1px;
+}
+@media (min-width: 990px) {
+  .border-main-gradient:hover:after {
+    background-position: 100% 0 !important;
+  }
+}
+
+.gradient-text {
+  background: -webkit-gradient(
+    linear,
+    left top,
+    right top,
+    from(#111111),
+    color-stop(#563333),
+    to(#852121)
+  );
+  background: linear-gradient(to right, #111111, #563333, #852121);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-black-gradient {
+  background: linear-gradient(135deg, #181818, #838383, #131212, #838383, #181818);
+  background-size: 200% 100% !important;
+  -webkit-transition: background 0.25s ease-in-out 0s !important;
+  transition: background 0.25s ease-in-out 0s !important;
+  box-shadow: 0 3px 7px -3px rgb(255 255 255 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.bg-black-gradient:hover {
+  background-position: 100% 0 !important;
+}
+
+.bg-blue-purple-gradient {
+  background-image: linear-gradient(92deg, rgba(43, 76, 255, 0.10) 29.63%, rgba(195, 43, 249, 0.10) 96.82%);
+  stroke-width: 1px;
+  stroke: var(--G-2, #2B4CFF);
+}
+
+.bg-gradient-blue-to-purple {
+  background-image: linear-gradient(170deg, #211111, #882132);
+}
+
+.text-gradient-blue-to-purple {
+  background-image: linear-gradient(170deg, #211111, #882132);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-gradient-sign-message {
+  background-image: linear-gradient(to right,
+          #211111 0%,
+          /* Start with the first color (red) */
+          #211111 30%,
+          /* Maintain the first color until 30% */
+          #882132 100%
+          /* Transition to the second color (blue) until the end */
+      );
+}
+
+.bg-purple-gradient {
+  background-image: linear-gradient(98deg, #211111 11.98%, #882132 100%)
+}
+
+.bg-purple2-gradient {
+  background-image: linear-gradient(120deg, #211111 11.98%, #882132 100%);
+}
+
+.bg-purple3-gradient {
+  background-image: linear-gradient(100deg, #111111 0%, #452110 50%, #992100 100%);
+}
