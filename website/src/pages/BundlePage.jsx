@@ -7,7 +7,6 @@ import { AppContext } from "../App";
 import PumpfunMintSnipe from "../components/PumpfunBundle/PumpfunMintSnipe";
 import FairLaunch from "../components/FairLaunch/FairLaunch";
 import Token2022Buy from "../components/Token2022Buy/Token2022Buy";
-import PumpfunGhostBundle from "../components/PumpfunGhostBundle/PumpfunGhostBundle";
 import RaydiumLaunchlabBundle from "../components/RaydiumLaunchlabBundle/RaydiumLaunchlabBundle";
 
 const BundlePage = () => {

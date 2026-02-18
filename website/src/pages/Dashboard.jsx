@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import ControlPanel from "../components/ControlPanel/ControlPanel";
 import SwapPanel from "../components/SwapPanel/SwapPanel";
 import BundlerWalletManagement from "../components/BundlerWalletManagement/BundlerWalletManagement";
+import VolumeBotManagement from "../components/VolumeBot/VolumeBotManagement";
 import TokenInfoPanel from "../components/TokenInfoPanel/TokenInfoPanel";
 import WalletManagement from "../components/WalletManagement/WalletManagement";
 import OrderHistory from "../components/OrderHistory/OrderHistory";
@@ -13,6 +14,7 @@ import { AppContext } from "../App";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddress, getMint } from "@solana/spl-token";
+import Promise from "bluebird";
 import { isValidAddress } from "../utils/methods";
 import BigNumber from 'bignumber.js';
 import { CircledButton } from "../components/Buttons/Buttons";
@@ -21,10 +23,11 @@ import copy from "copy-to-clipboard";
 import TokenSearchPanel from "../components/TokenInfoPanel/TokenSearchPanel";
 import { toast } from "react-toastify";
 
+const RPC_CONCURRENCY = parseInt(import.meta.env.VITE_APP_RPC_CONCURRENCY);
 export const dashboardContext = createContext(null);
 
 function Dashboard() {
-  const { activeTokenAddress, setActiveTokenAddress, currentProject, refresh, setRefresh, setLoadingPrompt, setOpenLoading, tokenInfo } = useContext(AppContext);
+  const { activeTokenAddress, setActiveTokenAddress, currentProject, refresh, setRefresh, setLoadingPrompt, setOpenLoading, tokenInfo, activeDashboardPanel } = useContext(AppContext);
 
   const { connection } = useConnection();
 
@@ -54,7 +57,7 @@ function Dashboard() {
 
       const programId = new PublicKey(tokenInfo.programId);
 
-      activeTokenBalances = await Promise.all(wallets.map(async (item) => {
+      activeTokenBalances = await Promise.map(wallets, async (item) => {
         if (isValidAddress(item)) {
           try {
             const owner = new PublicKey(item);
@@ -67,10 +70,10 @@ function Dashboard() {
           }
         }
         return "0.0000";
-      }));
+      }, { concurrency: RPC_CONCURRENCY });
 
       if (teamWallets) {
-        teamActiveTokenBalances = await Promise.all(teamWallets.map(async (item) => {
+        teamActiveTokenBalances = await Promise.map(teamWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -82,11 +85,11 @@ function Dashboard() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
 
       if (additionalWallets) {
-        additionalActiveTokenBalances = await Promise.all(additionalWallets.map(async (item) => {
+        additionalActiveTokenBalances = await Promise.map(additionalWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -98,7 +101,7 @@ function Dashboard() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
     }
     catch (err) {
@@ -295,8 +298,9 @@ function Dashboard() {
             </div>
             <div className="w-full h-[20%] grow flex flex-col overflow-auto">
               <TokenInfoPanel />
-              {/* <SwapPanel /> */}
-              <BundlerWalletManagement />
+              {/* <SwapPanel /> */} 
+              {activeDashboardPanel === 'trading' && <BundlerWalletManagement />}
+              {activeDashboardPanel === 'volumeBot' && <VolumeBotManagement />}
               <WalletManagement />
             </div>
           </div>

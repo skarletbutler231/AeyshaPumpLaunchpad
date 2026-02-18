@@ -11,6 +11,7 @@ import io from 'socket.io-client';
 import { Metadata, PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
 import { PublicKey } from '@solana/web3.js';
 import { getAccount, getAssociatedTokenAddress, getMint, NATIVE_MINT } from '@solana/spl-token';
+import Promise from 'bluebird';
 import BigNumber from 'bignumber.js';
 import { Buffer } from 'buffer';
 
@@ -44,6 +45,7 @@ import PumpfunGhostLaunchPage from './pages/PumpfunGhostLaunchPage';
 import { getSdk, initSdk } from './utils/raydiumSdk';
 import { LAUNCHPAD_PROGRAM } from '@raydium-io/raydium-sdk-v2';
 
+const RPC_CONCURRENCY = parseInt(import.meta.env.VITE_APP_RPC_CONCURRENCY);
 export const AppContext = createContext(null);
 
 function App() {
@@ -96,6 +98,7 @@ function App() {
   const [etherInfo, setEtherInfo] = useState();
   const [solInfo, setSolInfo] = useState();
   const [timer, setTimer] = useState(null);
+  const [activeDashboardPanel, setActiveDashboardPanel] = useState('trading'); // 'trading' | 'volumeBot'
 
   const SERVER_URL = `${ENV.SERVER_URL}`;
   const WEBSOCKET_HOST = SERVER_URL //import.meta.env.VITE_APP_SERVER_URL
@@ -232,6 +235,17 @@ function App() {
       setNotifyStatus({ success: m.message === "OK", tag: "COLLECT_ALL_ETH" });
     });
 
+    ws.on("VOLUMEBOT_STOPPED", async (value) => {
+      const m = JSON.parse(value);
+      if (m.project) {
+        setCurrentProject((prev) =>
+          prev && prev._id === m.projectId ? { ...prev, volumeBot: { ...prev.volumeBot, isRunning: false } } : prev
+        );
+        setRefresh((r) => !r);
+      }
+      toast.warn(m.message || "Volume bot stopped");
+    });
+
     setWebSocket(ws);
   };
 
@@ -258,7 +272,7 @@ function App() {
 
       const mintInfo = await getMint(connection, mint, "confirmed", mintProgramId);
 
-      tokenBalances = await Promise.all(wallets.map(async (item) => {
+      tokenBalances = await Promise.map(wallets, async (item) => {
         if (isValidAddress(item)) {
           try {
             const owner = new PublicKey(item);
@@ -271,10 +285,10 @@ function App() {
           }
         }
         return "0.0000";
-      }));
+      }, { concurrency: RPC_CONCURRENCY });
 
       if (teamWallets) {
-        teamTokenBalances = await Promise.all(teamWallets.map(async (item) => {
+        teamTokenBalances = await Promise.map(teamWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -286,11 +300,11 @@ function App() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
 
       if (additionalWallets) {
-        additionalTokenBalances = await Promise.all(additionalWallets.map(async (item) => {
+        additionalTokenBalances = await Promise.map(additionalWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -302,7 +316,7 @@ function App() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
     }
     catch (err) {
@@ -312,7 +326,7 @@ function App() {
     }
 
     try {
-      wsolBalances = await Promise.all(wallets.map(async (item) => {
+      wsolBalances = await Promise.map(wallets, async (item) => {
         if (isValidAddress(item)) {
           try {
             const owner = new PublicKey(item);
@@ -325,14 +339,14 @@ function App() {
           }
         }
         return "0.0000";
-      }));
+      }, { concurrency: RPC_CONCURRENCY });
     }
     catch (err) {
       wsolBalances = wallets.map(() => "0");
     }
 
     try {
-      solBalances = await Promise.all(wallets.map(async (item) => {
+      solBalances = await Promise.map(wallets, async (item) => {
         if (isValidAddress(item)) {
           try {
             const owner = new PublicKey(item);
@@ -343,10 +357,10 @@ function App() {
           }
         }
         return "0.0000";
-      }));
+      }, { concurrency: RPC_CONCURRENCY });
 
       if (teamWallets) {
-        teamSolBalances = await Promise.all(teamWallets.map(async (item) => {
+        teamSolBalances = await Promise.map(teamWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -358,11 +372,11 @@ function App() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
 
       if (additionalWallets) {
-        additionalSolBalances = await Promise.all(additionalWallets.map(async (item) => {
+        additionalSolBalances = await Promise.map(additionalWallets, async (item) => {
           if (isValidAddress(item)) {
             try {
               const owner = new PublicKey(item);
@@ -374,7 +388,7 @@ function App() {
             }
           }
           return "0.0000";
-        }));
+        }, { concurrency: RPC_CONCURRENCY });
       }
     }
     catch (err) {
@@ -1094,7 +1108,9 @@ function App() {
         poolInfo,
         setPoolInfo,
         reloadAllBalances,
-        raydium
+        raydium,
+        activeDashboardPanel,
+        setActiveDashboardPanel
       }}
     >
       <LoadingDialog isOpen={openLoading} prompt={loadingPrompt} />

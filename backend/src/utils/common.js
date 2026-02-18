@@ -9,6 +9,7 @@ const {
 } = require("@solana/web3.js");
 const {
     NATIVE_MINT,
+    TOKEN_2022_PROGRAM_ID,
     getMint,
     getAssociatedTokenAddress,
     createAssociatedTokenAccountInstruction,
@@ -17,7 +18,7 @@ const {
 const {
     MAINNET_PROGRAM_ID,
     DEVNET_PROGRAM_ID,
-    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,    
     SPL_ACCOUNT_LAYOUT,
     Liquidity,
     Percent,
@@ -39,7 +40,7 @@ const sendEmail = require("./sendEmail");
 const { aesEncrypt, aesDecrypt } = require("./aes");
 const User = require("../models/userModel");
 const { PROGRAM_ID, Metadata } = require("@metaplex-foundation/mpl-token-metadata");
-const { REFERRAL_FEE, EXTRA_REFERRAL_FEE, REFERRAL_WHITELIST } = require("../constants/index");
+const { REFERRAL_FEE, EXTRA_REFERRAL_FEE, REFERRAL_WHITELIST, programID: PUMPFUN_PROGRAM_ID } = require("../constants/index");
 const { buildBundleOnNB, CreateTraderAPITipInstruction, buildBundleOnNBAndConfirmTxId } = require("./astralane");
 const { Transaction } = require("@solana/web3.js");
 const { ComputeBudgetProgram } = require("@solana/web3.js");
@@ -278,7 +279,7 @@ exports.checkMigratedToPumpswap = async (tokenAddress) => {
     return null;
 }
 
-exports.getPoolInfo = async (connection, token) => {
+exports.getPoolInfo = async (connection, token, isToken2022 = false) => {
     console.log("Getting pool info...", token);
 
     if (!token) {
@@ -286,7 +287,7 @@ exports.getPoolInfo = async (connection, token) => {
         return {};
     }
 
-    let fromPumpfun = await this.isFromPumpfun(connection, token);
+    let fromPumpfun = await this.isFromPumpfun(connection, token, isToken2022);
     console.log("frompumpfun", fromPumpfun);
     if (fromPumpfun) return null;
 
@@ -1266,30 +1267,32 @@ exports.isOnRaydium = async (token) => {
     return false;
 }
 
-exports.isFromPumpfun = async (connection, token) => {
-    const mintAddress = new PublicKey(token);
-    const mintInfo = await getMint(connection, mintAddress);
-    const [metadataPDA] = PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("metadata"),
-            PROGRAM_ID.toBuffer(),
-            mintAddress.toBuffer()
-        ],
-        PROGRAM_ID
-    )
-
+/**
+ * Check if a token is from pump.fun by verifying the bonding curve account exists.
+ * Pump.fun creates a bonding curve PDA for every launched token; this is the reliable signal.
+ * Metaplex metadata is not used because many pump.fun tokens do not have a Metadata account.
+ */
+exports.isFromPumpfun = async (connection, token, isToken2022 = false) => {
     try {
-        const metadata = await Metadata.fromAccountAddress(connection, metadataPDA);
-        const updateAuthority = metadata.updateAuthority.toBase58();
-        const PUMPFUN_UPDATE_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
-        if (updateAuthority == PUMPFUN_UPDATE_AUTHORITY) {
+        const mintAddress = new PublicKey(token);
+        const pumpfunProgramId = new PublicKey(PUMPFUN_PROGRAM_ID);
+
+        // Bonding curve PDA: seeds = ["bonding-curve", mint], program = pump.fun
+        const [bondingCurvePDA] = PublicKey.findProgramAddressSync(
+            [Buffer.from("bonding-curve"), mintAddress.toBuffer()],
+            pumpfunProgramId
+        );
+
+        const accountInfo = await connection.getAccountInfo(bondingCurvePDA);
+        if (accountInfo && accountInfo.owner.equals(pumpfunProgramId)) {
             return true;
         }
-    } catch (err) {
-        console.log(err);
-    }
 
-    return false;
+        return false;
+    } catch (err) {
+        console.log('isFromPumpfun error', err?.message || err);
+        return false;
+    }
 }
 
 exports.extractStringFromBuffer = (buffer, offset, length) => {

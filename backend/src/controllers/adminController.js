@@ -2,7 +2,7 @@ const { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL, TransactionMessage,
 const { useConnection } = require("../utils/connection");
 const { getWebSocketClientList } = require("../utils/websocket");
 const { BN } = require("bn.js");
-const { useJitoTipAddr, sendBundles } = require("../utils/jito");
+const { useJitoTipAddr, sendJitoBundle } = require("../utils/jito");
 const Wallet = require("../models/walletModel");
 const Preset = require("../models/presetModel");
 const bs58 = require("bs58");

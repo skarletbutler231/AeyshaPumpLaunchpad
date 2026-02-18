@@ -10,7 +10,6 @@ const {
     addJitoSigner,
     deleteJitoSigner,
 } = require("../utils/connection");
-const { sendBundles } = require("../utils/jito");
 const { getLogs, deleteLogs } = require("../utils/log");
 const { buildRawBundlesOnBX } = require("../utils/bloxroute");
 const { buildBundleOnNB, submitBatchedTransaction } = require("../utils/astralane");

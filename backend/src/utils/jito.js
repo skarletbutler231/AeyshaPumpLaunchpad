@@ -13,7 +13,6 @@ const {
   LAMPORTS_PER_SOL,
 } = require("@solana/web3.js");
 const { useConnection, getSimulateMode, simulateTxs } = require("./connection");
-const { base64 } = require("@coral-xyz/anchor/dist/cjs/utils/bytes");
 const { searcherClient } = require("jito-ts/dist/sdk/block-engine/searcher");
 
 const JITO_TIMEOUT = 15000;
@@ -79,7 +78,7 @@ exports.CreateJitoTipInstruction = (
     return SystemProgram.transfer({
         fromPubkey: senderAddress,
         toPubkey: tipAddress,
-        lamports: Math.floor(tipAmount),
+        lamports: tipAmount,
     })
 }
 
@@ -297,7 +296,7 @@ exports.jitoWithAxios = async (transactions, latestBlockhash, connection) => {
   }
 };
 
-exports.sendBundles = async (transactions) => {
+exports.sendJitoBundle = async (transactions) => {
   try {
     if (transactions.length === 0) {
       console.log("Error! Empty transactions.");
@@ -305,44 +304,33 @@ exports.sendBundles = async (transactions) => {
     }
 
     console.log("Sending bundles...", transactions.length);
-    let bundleIds = [];
+    let bundleId = null;
+      
+    const rawTransactions = transactions.map((item) => {
+      return bs58.encode(item.serialize());
+    });
 
-    // console.log("\n\n***********\n", transactions)
-
-    const { connection } = useConnection();
-
-    for (let i = 0; i < transactions.length; i++) {
-      for (let j = 0; j < transactions[i].length; j++) {
-        console.log(await connection.simulateTransaction(transactions[i][j]));
-      }
-      const rawTransactions = transactions[i].map((item) => {
-        return bs58.encode(item.serialize());
-      });
-
-      // console.log(rawTransactions)
-
-      const { data } = await axios.post(
-        `https://${process.env.JITO_MAINNET_URL}/api/v1/bundles?uuid=${process.env.JITO_UUID}`,
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "sendBundle",
-          params: [rawTransactions],
+    const { data } = await axios.post(
+      `https://${process.env.JITO_MAINNET_URL}/api/v1/bundles?uuid=${process.env.JITO_UUID}`,
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sendBundle",
+        params: [rawTransactions],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-jito-auth": process.env.JITO_UUID,
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (data) {
-        console.log(data);
-        bundleIds = [...bundleIds, data.result];
       }
-      await sleep(700);
+    );
+    if (data) {
+      console.log(data);
+      bundleId = data.result;
     }
 
-    console.log("Checking bundle's status...", bundleIds);
+    console.log("Checking bundle's status...", bundleId);
     const sentTime = Date.now();
     while (Date.now() - sentTime < JITO_TIMEOUT) {
       try {
@@ -352,7 +340,7 @@ exports.sendBundles = async (transactions) => {
             jsonrpc: "2.0",
             id: 1,
             method: "getBundleStatuses",
-            params: [bundleIds],
+            params: [[bundleId]],
           },
           {
             headers: {
@@ -365,15 +353,14 @@ exports.sendBundles = async (transactions) => {
           const bundleStatuses = data.result.value;
           console.log("Bundle Statuses:", bundleStatuses);
           let success = true;
-          for (let i = 0; i < bundleIds.length; i++) {
-            const matched = bundleStatuses.find(
-              (item) => item && item.bundle_id === bundleIds[i]
-            );
-            if (!matched || matched.confirmation_status !== "confirmed") {
-              // finalized
-              success = false;
-              break;
-            }
+          
+          const matched = bundleStatuses.find(
+            (item) => item && item.bundle_id === bundleId
+          );
+          if (!matched || matched.confirmation_status !== "confirmed") {
+            // finalized
+            success = false;
+            break;
           }
 
           if (success) return true;
@@ -393,7 +380,7 @@ exports.sendBundles = async (transactions) => {
 
 exports.sendBundleTrxWithTip = async (transactions, tipPayer, tip = 0.002) => {
   const tipTrx = await this.getTipTrx(tipPayer, tip);
-  return await this.sendBundles([[...transactions, tipTrx]]);
+  return await this.sendJitoBundle([[...transactions, tipTrx]]);
 };
 
 exports.sendBundlesWithSDK = async (client, transactions) => {
@@ -499,36 +486,36 @@ exports.sendBundleConfirmTxId = async (
     console.log(
       "Sending bundles...",
       transactions.length,
-      transactions[0].length
     );
-    let bundleIds = [];
-    for (let i = 0; i < transactions.length; i++) {
-      const rawTransactions = transactions[i].map((item) => {
-        console.log(item.serialize().length);
-        return bs58.encode(item.serialize());
-      });
+    let bundleId = null;
+    
+    const rawTransactions = transactions.map((item) => {
+      return bs58.encode(item.serialize());
+    });
 
-      const { data } = await axios.post(
-        `https://${process.env.JITO_MAINNET_URL}/api/v1/bundles?uuid=${process.env.JITO_UUID}`,
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "sendBundle",
-          params: [rawTransactions],
+    const { data } = await axios.post(
+      `https://${process.env.JITO_MAINNET_URL}/api/v1/bundles?uuid=${process.env.JITO_UUID}`,
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sendBundle",
+        params: [
+          rawTransactions
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-jito-auth": process.env.JITO_UUID,
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (data) {
-        console.log(data);
-        bundleIds = [...bundleIds, data.result];
       }
+    );
+    if (data) {
+      console.log(data);
+      bundleId = data.result;
     }
 
-    console.log("Checking bundle's status...", bundleIds);
+    console.log("Checking bundle's status...", bundleId);
     const sentTime = Date.now();
     while (
       Date.now() - sentTime <
@@ -536,18 +523,17 @@ exports.sendBundleConfirmTxId = async (
     ) {
       try {
         let success = true;
-        for (let i = 0; i < bundleIds.length; i++) {
-          let ret = await connection.getTransaction(txHashs[i], {
-            commitment: commitment,
-            maxSupportedTransactionVersion: 1,
-          });
+        
+        let ret = await connection.getTransaction(txHashs[0], {
+          commitment: commitment,
+          maxSupportedTransactionVersion: 1,
+        });
 
-          if (ret && ret.meta && ret.meta.err == null) {
-            console.log("checked", bundleIds[i]);
-          } else {
-            success = false;
-            break;
-          }
+        if (ret && ret.meta && ret.meta.err == null) {
+          console.log("checked", bundleId);
+        } else {
+          success = false;
+          break;
         }
 
         if (success) {
@@ -561,7 +547,11 @@ exports.sendBundleConfirmTxId = async (
       await sleep(1000);
     }
   } catch (err) {
-    console.log(err);
+    if(err.response.data) {
+      console.log(err.response.data);
+    } else {
+      console.log(err);
+    }
   }
   return false;
 };

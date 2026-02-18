@@ -26,7 +26,7 @@ exports.PAYMENT_OPTIONS = [
         cash: 2,
         token: 1,
         desc: "Launch & Bundle Unlimited Supply",
-        walletLimit: 100
+        walletLimit: 20
     },
     {
         cash: 3.5,

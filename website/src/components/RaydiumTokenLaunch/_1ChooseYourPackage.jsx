@@ -30,6 +30,7 @@ export default function _1ChooseYourPackage(props) {
     } = useContext(AppContext);
     const [payPackage, setPayPackage] = useState(2);
     const [projectName, setProjcectName] = useState("");
+    const [token2022Checked, setToken2022Checked] = useState(true);
 
     const [isActivated, setIsActivated] = useState(false);
     const { connection } = useConnection();
@@ -57,7 +58,8 @@ export default function _1ChooseYourPackage(props) {
                     address: tokenAddress,
                     platform,
                     signingData,
-                    sigData
+                    sigData,
+                    isToken2022: token2022Checked,
                 },
                 {
                     headers: {
@@ -302,6 +304,14 @@ export default function _1ChooseYourPackage(props) {
                     onChange={(e) => setProjcectName(e.target.value)}
                 />
             </div>}
+            {/* {(selectedProject.paymentId == null) && <div className="w-full flex flex-row items-center gap-2">
+                <input type="checkbox"
+                    className="w-6 h-6 outline-none bg-gray-highlight opacity-20 accent-green-normal ring-0 rounded-lg"
+                    checked={token2022Checked}
+                    onChange={() => setToken2022Checked(!token2022Checked)}
+                />
+                <span className="w-full font-conthrax text-left">Is Token2022 Project?</span>
+            </div>} */}
             <div className="w-full flex gap-3">
                 <button
                     className="w-[50%] h-button grow rounded-lg justify-center items-center gap-1 inline-flex active:scale-95 transition duration-100 ease-in-out transform border border-solid border-gray-border focus:outline-none text-xs font-conthrax font-medium text-center text-white uppercase disabled:text-gray-border disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"

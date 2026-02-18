@@ -304,12 +304,13 @@ exports.addPubKeysToTable = async (_lookupTablePubkey, _pubKeys, _signerKeypair)
 }
 
 
+exports.addAddressesToTable = exports.addPubKeysToTable;
+
 exports.addAllPubkeysInInstructions = async (_lookupTablePubkey, _instructions, _payer) => {
 
-    // get all pubkeys in instructions
-    allPubkeys.push(_payer.publicKey)
-
     let allPubkeys = [];
+    allPubkeys.push(_payer.publicKey);
+
     _instructions.map((instruction) => {
         instruction.keys.map((key) => {
             const findResult = allPubkeys.find((item) => {
@@ -331,14 +332,57 @@ exports.addAllPubkeysInInstructions = async (_lookupTablePubkey, _instructions, 
         }
     })
 
-    // add to lookup table
-    const result = await this.addAddressesToTable(_lookupTablePubkey, allPubkeys, _payer)
+    const result = await exports.addPubKeysToTable(_lookupTablePubkey, allPubkeys, _payer)
 
     if (!result) {
         console.log("Error while adding pubkeys ", allPubkeys.length, "to LookupTable ", _lookupTablePubkey, ".")
     }
 
     return result
+}
+
+/**
+ * Collect all pubkeys from all instructions and signers in bundle transactions, then add them to the lookup table.
+ * @param _lookupTablePubkey - Lookup table address
+ * @param _bundles - Array of bundles; each bundle is an array of { instructions, signers, payer }
+ * @param _signerKeypair - Keypair that will sign the extend lookup table transaction(s)
+ */
+exports.addAllPubkeysInBundles = async (_lookupTablePubkey, _bundles, _signerKeypair) => {
+    let allPubkeys = [];
+    const pushIfNew = (pubkey) => {
+        const pk = pubkey && pubkey.publicKey ? pubkey.publicKey : pubkey;
+        if (!pk) return;
+        const findResult = allPubkeys.find((item) => item.toBase58() === pk.toBase58());
+        if (!findResult) allPubkeys.push(pk);
+    };
+
+    for (const bundle of _bundles) {
+        for (const item of bundle) {
+            pushIfNew(item.payer);
+            if (item.signers) {
+                for (const signer of item.signers) pushIfNew(signer);
+            }
+            if (item.instructions) {
+                for (const instruction of item.instructions) {
+                    if (instruction.keys) {
+                        for (const key of instruction.keys) pushIfNew(key.pubkey);
+                    }
+                    pushIfNew(instruction.programId);
+                }
+            }
+        }
+    }
+
+    if (allPubkeys.length === 0) {
+        console.log("addAllPubkeysInBundles: no pubkeys to add.");
+        return true;
+    }
+
+    const result = await exports.addPubKeysToTable(_lookupTablePubkey, allPubkeys, _signerKeypair);
+    if (!result) {
+        console.log("Error while adding pubkeys ", allPubkeys.length, "to LookupTable ", _lookupTablePubkey, ".");
+    }
+    return result;
 }
 
 

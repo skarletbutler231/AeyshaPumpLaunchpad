@@ -39,7 +39,7 @@ exports.CreateTraderAPITipInstruction = (
     return SystemProgram.transfer({
         fromPubkey: senderAddress,
         toPubkey: tipAddress,
-        lamports: Math.floor(tipAmount),
+        lamports: tipAmount,
     })
 }
 
@@ -117,25 +117,32 @@ exports.buildTxOnNB = async (
     signer,
     tip,
 ) => {
-    const TipInstr = CreateTraderAPITipInstruction(signer.publicKey, tip * LAMPORTS_PER_SOL)
-    const swapInstructions = TransactionMessage.decompile(tx.message).instructions
+    const TipInstr = exports.CreateTraderAPITipInstruction(signer.publicKey, tip * LAMPORTS_PER_SOL);
 
-    const { connection } = useConnection()
-    const recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+    let instructions;
+    if (tx instanceof VersionedTransaction) {
+        instructions = TransactionMessage.decompile(tx.message).instructions;
+    } else if (tx instanceof Transaction) {
+        instructions = tx.instructions;
+    } else {
+        throw new Error('buildTxOnNB: tx must be Transaction or VersionedTransaction');
+    }
+
+    const { connection } = useConnection();
+    const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
     const swapMessage = new Transaction({
-        recentBlockhash: recentBlockhash,
+        recentBlockhash,
         feePayer: signer.publicKey,
     })
-        .add(...swapInstructions)
-        .add(TipInstr)
+        .add(...instructions)
+        .add(TipInstr);
 
-    swapMessage.sign(signer)
-    let buff = Buffer.from(swapMessage.serialize())
-    let encodedTxn = buff.toString("base64");
+    swapMessage.sign(signer);
+    const buff = Buffer.from(swapMessage.serialize());
+    const encodedTxn = buff.toString("base64");
 
-    const response = await this.submitBatchedTransaction([encodedTxn]);
-
+    const response = await exports.submitBatchedTransaction([encodedTxn]);
     return response;
 }
 

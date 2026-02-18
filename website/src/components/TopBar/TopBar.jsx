@@ -50,7 +50,9 @@ const TopBar = ({ noProject = false, title = "" }) => {
     solInfo,
     setLoadingPrompt,
     setOpenLoading,
-    setUser
+    setUser,
+    activeDashboardPanel,
+    setActiveDashboardPanel
   } = useContext(AppContext);
 
   const navigate = useNavigate();
@@ -289,9 +291,28 @@ const TopBar = ({ noProject = false, title = "" }) => {
 
         }
       </div>
+
       <div className="h-full flex-[5] flex flex-row-reverse gap-3 items-center">
         <ConnectWalletButton />
         <div className="h-full flex gap-3 items-center">
+          {!noProject && (
+            <div className="p-1 h-fit flex items-center gap-1 rounded-md bg-white/10 hover:bg-white/40 active:bg-white/30">
+              <button
+                type="button"
+                className={`px-3 py-1 rounded font-medium transition-colors ${activeDashboardPanel === 'trading' ? 'bg-white/30 text-white' : 'text-gray-400 hover:text-white'}`}
+                onClick={() => setActiveDashboardPanel('trading')}
+              >
+                Trading
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded font-medium transition-colors ${activeDashboardPanel === 'volumeBot' ? 'bg-white/30 text-white' : 'text-gray-400 hover:text-white'}`}
+                onClick={() => setActiveDashboardPanel('volumeBot')}
+              >
+                Volume Bot
+              </button>
+            </div>
+          )}
           {
             user && sigData && signingData && <>
               <div

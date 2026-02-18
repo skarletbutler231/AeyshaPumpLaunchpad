@@ -23,11 +23,13 @@ const {
     collectAllFee,
     simulateBuyPumpfunTokens,
     mintAndSnipePumpfunTokens,
+    mintAndSnipePumpfunTokensV2,
     mintAndBuyPumpfunTokens,
     mintPumpfunToken,
     buyPumpfunTokens,
     sellPumpfunTokens,
     preDisperseTokens,
+    executeSale,
     addAdditionalWallets,
     sendOrReceive,
     handleLimitSwap,
@@ -42,7 +44,9 @@ const {
     uploadWallets,
     burnTaxToken,
     pumpfunDisperseSOLsViaMirrors,
-    disperseSOLsViaMirrors
+    disperseSOLsViaMirrors,
+    volumebotRun,
+    volumebotStop
 } = require("../controllers/projectController.js");
 
 const router = express.Router();
@@ -71,6 +75,9 @@ router.route('/project/transfer').post(isValidUser, transferTokens);
 router.route('/project/transfer-all').post(isValidUser, transferAll);
 router.route('/project/estimate-swap-amount-out').post(isValidUser, estimateSwapAmountOut);
 router.route('/project/handle-swap').post(isValidUser, swapToken);
+router.route('/project/execute-sale').post(isValidUser, executeSale);
+router.route('/project/volumebot-run').post(isValidUser, volumebotRun);
+router.route('/project/volumebot-stop').post(isValidUser, volumebotStop);
 router.route('/project/add-additional-wallet').post(isValidUser, addAdditionalWallets);
 router.route('/project/remove-additional-wallet').post(isValidUser, removeAdditionalWallets);
 router.route('/project/send-or-receive').post(isValidUser, sendOrReceive);
@@ -79,6 +86,7 @@ router.route('/project/add-100-wallets').post(isValidUser, add100Wallets);
 // pumpfun
 router.route('/project/pumpfun-simulate').post(isValidUser, simulateBuyPumpfunTokens);
 router.route('/project/pumpfun-mint-snipe').post(isValidUser, mintAndSnipePumpfunTokens);
+router.route('/project/pumpfun-mint-snipe-v2').post(isValidUser, mintAndSnipePumpfunTokensV2);
 router.route('/project/pumpfun-mint-buy').post(isValidUser, mintAndBuyPumpfunTokens);
 router.route('/project/pumpfun-mint').post(isValidUser, mintPumpfunToken);
 router.route('/project/pumpfun-buy').post(isValidUser, buyPumpfunTokens);

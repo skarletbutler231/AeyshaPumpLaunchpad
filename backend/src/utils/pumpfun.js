@@ -1,4 +1,5 @@
 const {
+  Connection,
   Keypair,
   PublicKey,
   Transaction,
@@ -13,6 +14,7 @@ const {
   getMint,
   getAccount,
   TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   getAssociatedTokenAddressSync,
@@ -23,9 +25,17 @@ const {
   AccountLayout,
   createInitializeAccountInstruction,
 } = require("@solana/spl-token");
+const { 
+  PumpSdk,
+  OnlinePumpSdk
+} = require('@pump-fun/pump-sdk');
 
-const { PumpSdk } = require('@pump-fun/pump-sdk');
+const dotenv = require('dotenv');
+dotenv.config();
 
+const connection = new Connection(process.env.SOLANA_RPC_URL, "confirmed");
+const pumpSdk = new PumpSdk();
+const onlinePumpSdk =  new OnlinePumpSdk(connection);
 const anchor = require('@project-serum/anchor');
 const base58 = require("bs58");
 
@@ -139,6 +149,7 @@ exports.getKeypairFromBs58 = (bs58String) => {
 exports.getPumpPoolKeys = async (
   program,
   tokenMint,
+  is_v2 = false,
 ) => {
   const mint = tokenMint;
   console.log("new Mint Address: ", mint.toString());
@@ -148,7 +159,7 @@ exports.getPumpPoolKeys = async (
     mint,
     bondingCurve,
     true,
-    TOKEN_PROGRAM_ID,
+    is_v2 ? TOKEN_2022_PROGRAM_ID: TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
   const metadataAccount = await getMetadataAccount(mint);
@@ -234,7 +245,7 @@ exports.buildInitializeTx = async (target, destination) => {
 exports.buildRecoverTx = async (
   target,
   destination,
-  feeAmount,
+  feeAmount
 ) => {
   const tx = new Transaction();
 
@@ -305,12 +316,13 @@ exports.buildBuyTxBufferContract = async (
   tokenAmount,
   creator,
   feeAmount,
+  isToken2022 = false,
 ) => {
   const bondingCurve = getBondingCurvePDA(mint);
   const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
     [
       bondingCurve.toBuffer(),
-      TOKEN_PROGRAM_ID.toBuffer(),
+      isToken2022 ? TOKEN_2022_PROGRAM_ID.toBuffer() : TOKEN_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
     ],
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -319,7 +331,7 @@ exports.buildBuyTxBufferContract = async (
   const creatorVaultPDA = getCreatorVaultPDA(creator);
 
   const user = signerKeypair.publicKey;
-  const userAta = getAssociatedTokenAddressSync(mint, user, true);
+  const userAta = getAssociatedTokenAddressSync(mint, user, true, isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID);
   const userVolumeAccumulator = getUserVolumeAccumulatorPDA(user);
 
   const decimals = 6;
@@ -335,7 +347,8 @@ exports.buildBuyTxBufferContract = async (
       user,
       userAta,
       user,
-      mint
+      mint,
+      isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
     )
   );
 
@@ -347,7 +360,7 @@ exports.buildBuyTxBufferContract = async (
     { pubkey: associatedBondingCurve, isSigner: false, isWritable: true },
     { pubkey: userAta, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: creatorVaultPDA, isSigner: false, isWritable: true },
     { pubkey: new PublicKey(EVENT_AUTH), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(programID), isSigner: false, isWritable: false },
@@ -479,6 +492,51 @@ exports.buildMintBuyTx = async (
   return tx;
 }
 
+exports.buildMintBuyTxV2 = async (
+  signerKeypair,
+  tokenMint,
+  tokenName,
+  tokenSymbol,
+  tokenUri,
+  maxSolCost,
+  tokenAmount,
+  creator,
+  isForSnipe = false
+) => {
+  const mint = new PublicKey(tokenMint);
+
+  const globalData = await onlinePumpSdk.fetchGlobal();
+  const user = signerKeypair.publicKey;
+
+  const decimals = 6;
+  const finalAmount = tokenAmount;
+
+  console.log(`Buy token(${mint.toString()}) ${finalAmount}`);
+
+  //creating tx;
+  const tx = new Transaction();
+
+  const snipeIx = await pumpSdk.createV2AndBuyInstructions({
+    global: globalData,
+    mint,
+    name: tokenName,
+    symbol: tokenSymbol,
+    uri: tokenUri,
+    creator,
+    user,
+    amount: new anchor.BN(finalAmount * 10 ** decimals),    
+    solAmount: new anchor.BN(maxSolCost)
+  })
+
+  if (isForSnipe) {
+    tx.add(...snipeIx.slice(-3));
+  } else {
+    tx.add(...snipeIx);
+  }
+
+  return tx;
+}
+
 /**
  * @function: buildMintBuyTxBuffer()
  * @description: build buy transaction
@@ -582,13 +640,14 @@ exports.buildSellTxBuffer = async (
   minSolAmount,
   tokenAmount,
   creator,
-  isClose = false
+  isClose = false,
+  isToken2022 = false
 ) => {
   const bondingCurve = getBondingCurvePDA(mint);
   const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
     [
       bondingCurve.toBuffer(),
-      TOKEN_PROGRAM_ID.toBuffer(),
+      isToken2022 ? TOKEN_2022_PROGRAM_ID.toBuffer() : TOKEN_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
     ],
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -597,7 +656,7 @@ exports.buildSellTxBuffer = async (
   const creatorVaultPDA = getCreatorVaultPDA(creator);
 
   const user = signerKeypair.publicKey;
-  const userAta = getAssociatedTokenAddressSync(mint, user, true);
+  const userAta = getAssociatedTokenAddressSync(mint, user, true, isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID);
 
   const decimals = 6;
   const finalAmount = tokenAmount;
@@ -617,7 +676,7 @@ exports.buildSellTxBuffer = async (
     { pubkey: user, isSigner: true, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: creatorVaultPDA, isSigner: false, isWritable: true },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: new PublicKey(EVENT_AUTH), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(programID), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(pumpfunFeeConfig), isSigner: false, isWritable: false },
@@ -645,7 +704,9 @@ exports.buildSellTxBuffer = async (
       createCloseAccountInstruction(
         userAta,
         user,
-        user
+        user,
+        [],
+        isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       )
     );
   }
@@ -939,6 +1000,7 @@ exports.buildBuyTxWithBuffer = async (
   maxSolCost,
   tokenAmount,
   bondingCurveParam = null,
+  isToken2022 = false,
 ) => {
   const mint = new PublicKey(tokenMint);
   const decimals = 6;
@@ -970,14 +1032,14 @@ exports.buildBuyTxWithBuffer = async (
   const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
     [
       bondingCurvePDA.toBuffer(),
-      TOKEN_PROGRAM_ID.toBuffer(),
+      isToken2022 ? TOKEN_2022_PROGRAM_ID.toBuffer() : TOKEN_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
     ],
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
   const user = signerKeypair.publicKey;
-  const userAta = getAssociatedTokenAddressSync(mint, user, true);
+  const userAta = getAssociatedTokenAddressSync(mint, user, true, isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID);
   const userVolumeAccumulator = getUserVolumeAccumulatorPDA(user);
   const creatorVaultPDA = getCreatorVaultPDA(bondingCurve.creator);
 
@@ -988,14 +1050,15 @@ exports.buildBuyTxWithBuffer = async (
   const tx = new Transaction();
 
   try {
-    await getAccount(connection, userAta, "confirmed");
+    await getAccount(connection, userAta, "confirmed", isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID);
   } catch (error) {
     tx.add(
       createAssociatedTokenAccountInstruction(
         user,
         userAta,
         user,
-        mint
+        mint,
+        isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       )
     );
   }
@@ -1009,7 +1072,7 @@ exports.buildBuyTxWithBuffer = async (
     { pubkey: userAta, isSigner: false, isWritable: true },
     { pubkey: user, isSigner: true, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: creatorVaultPDA, isSigner: false, isWritable: true },
     { pubkey: new PublicKey(EVENT_AUTH), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(programID), isSigner: false, isWritable: false },
@@ -1112,12 +1175,13 @@ exports.buildSellTxWithBuffer = async (
   signerKeypair,
   tokenMint,
   percentage,
-  tokenAmount
+  tokenAmount,
+  isToken2022 = false,
 ) => {
   const mint = new PublicKey(tokenMint);
   
   const user = signerKeypair.publicKey;
-  const userAta = getAssociatedTokenAddressSync(mint, user, true);
+  const userAta = getAssociatedTokenAddressSync(mint, user, true, isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID);
   const bondingCurvePDA = getBondingCurvePDA(mint);
   const decimals = 6;
   
@@ -1161,7 +1225,7 @@ exports.buildSellTxWithBuffer = async (
   const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
     [
       bondingCurvePDA.toBuffer(),
-      TOKEN_PROGRAM_ID.toBuffer(),
+      isToken2022 ? TOKEN_2022_PROGRAM_ID.toBuffer() : TOKEN_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
     ],
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1179,7 +1243,7 @@ exports.buildSellTxWithBuffer = async (
     { pubkey: user, isSigner: true, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: creatorVaultPDA, isSigner: false, isWritable: true },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: new PublicKey(EVENT_AUTH), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(programID), isSigner: false, isWritable: false },
     { pubkey: new PublicKey(pumpfunFeeConfig), isSigner: false, isWritable: false },

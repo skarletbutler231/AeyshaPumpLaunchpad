@@ -23,6 +23,10 @@ const projectSchema = new mongoose.Schema({
         customRpc: String,
         rewardCA: String,
     },
+    isToken2022: {
+        type: Boolean,
+        default: false,
+    },
     poolInfo: {
         type: Object,
     },
@@ -47,6 +51,16 @@ const projectSchema = new mongoose.Schema({
             }
         }
     ],
+    volumeBot: {
+        isRunning: Boolean,
+        period: Number,
+        wallets: [
+            {
+                address: String,
+                amount: String,
+            }
+        ],
+    },
     mirrorWallets: [
         {
             address: String,

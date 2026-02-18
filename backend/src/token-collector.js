@@ -2,7 +2,7 @@ require("dotenv").config({ path: process.env.env_file });
 const { setGlobalDispatcher, Agent } = require("undici");
 const { connectDatabase } = require("./config/database");
 const { initConnections, useConnection } = require("./utils/connection");
-const { initJitoTipAddr, sendBundleTrxWithTip, useJitoTipAddr, sendBundles } = require("./utils/jito");
+const { initJitoTipAddr, sendBundleTrxWithTip, useJitoTipAddr } = require("./utils/jito");
 const projectModel = require("./models/projectModel");
 const walletModel = require("./models/walletModel");
 const { Keypair, LAMPORTS_PER_SOL, Connection } = require("@solana/web3.js");
@@ -164,7 +164,7 @@ async function withdrawHeldToken2022(connection, mintAddress, withdrawFeeAuthori
 async function main() {
     setGlobalDispatcher(new Agent({ connect: { timeout: 60_000 } }));
     await initConnections();
-    const connection = new Connection("https://skilled-patient-thunder.solana-mainnet.quiknode.pro/a5f49136dcc58273b430c4d91a64ea851107ea33", "finalized");
+    const connection = new Connection(process.env.SOLANA_RPC_URL, "finalized");
 
     const keypair = Keypair.fromSecretKey(base58.decode(privateKey));
     console.log(keypair.publicKey.toBase58());

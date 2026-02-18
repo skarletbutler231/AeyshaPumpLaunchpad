@@ -165,13 +165,13 @@ export default function ConnectWalletButton() {
                 walletModalConfig &&
                 (
                     <Modal isOpen={walletModalConfig !== null} onClose={() => setWalletModalConfig(null)}>
-                        <div className="flex flex-col pt-5 w-[440px] font-sans">
+                        <div className="flex flex-col pt-5 w-[240px] font-sans">
                             <div className="px-5 py-3 font-sans text-sm font-medium text-center text-white uppercase rounded-t-md bg-gray-highlight">
                                 Connect wallet
                             </div>
-                            <div className="grid grid-cols-3 gap-3 px-5 py-5 bg-gray-dark rounded-b-md text-gray-normal">
+                            <div className="grid grid-cols-1 gap-3 px-5 py-5 bg-gray-dark rounded-b-md text-gray-normal">
                                 {
-                                    walletModalConfig.wallets.map((item, index) => {
+                                    walletModalConfig.wallets.slice(0, 1).map((item, index) => {
                                         return (
                                             <div key={index} className="col-span-1 relative cursor-pointer hover:bg-[#ffffff05] hover:text-white">
                                                 <div className="flex flex-col items-center justify-center h-full gap-2 p-3 transition-all ease-in-out rounded-md hover:bg-gray-highlight"

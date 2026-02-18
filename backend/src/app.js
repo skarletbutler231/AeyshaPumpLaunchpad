@@ -16,6 +16,7 @@ const admin = require("./routes/adminRoute");
 const { connectDatabase } = require("./config/database");
 const { startWebSocketServer } = require("./utils/websocket");
 const { initConnections } = require("./utils/connection");
+const { startVolumeBotThread } = require("./threads/volumebot");
 const { BN } = require("bn.js");
 // const { initJitoTipAddr } = require("./utils/jito");
 const { initPreset } = require("./controllers/adminController");
@@ -29,6 +30,7 @@ const { initPreset } = require("./controllers/adminController");
 setGlobalDispatcher(new Agent({ connect: { timeout: 60_000 } }) );
 connectDatabase();
 initConnections();
+startVolumeBotThread();
 // initJitoTipAddr();
 
 const PORT = process.env.PORT || 8443;

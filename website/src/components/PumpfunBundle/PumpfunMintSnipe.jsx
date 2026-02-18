@@ -1550,7 +1550,10 @@ export default function PumpfunMintSnipe({ className }) {
             setLoadingPrompt("Mint and Sniping Pumpfun Tokens...");
             setOpenLoading(true);
 
-            await axios.post(`${SERVER_URL}/api/v1/project/pumpfun-mint-snipe`,
+            const endpoint = currentProject.isToken2022 ? 
+                `${SERVER_URL}/api/v1/project/pumpfun-mint-snipe-v2` : 
+                `${SERVER_URL}/api/v1/project/pumpfun-mint-snipe`;
+            await axios.post(endpoint,
                 {
                     projectId: currentProject._id,
                     // signedTransactions: txnsBase64,

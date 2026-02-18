@@ -69,9 +69,35 @@ const User = require("../models/userModel");
 const LimitOrder = require("../models/limitOrderModel");
 const { useConnection, rpcConfirmationExecute, simulateTxs, getPriorityUnitPrice, getSimulateMode, simulateBundle } = require("../utils/connection");
 const { isValidAddress, createWallets, getBalance, registerAddressLookup, createAccounts, createPoolAndInitialBuy, estimateOutputAmout, createAddressLookupWithAddressList, isOnRaydium, getBuyTokenInstructions, extractStringFromBuffer, checkMigratedToPumpswap, buildTx, getPriorifyFeeTx, getPriorifyFeeIxs, JITO_TIP, pollTransactionStatuses } = require("../utils/common");
-const { getSolAmountsSimulate, getPumpPoolKeys, buildMintTx, buildMintBuyTx, getSafeSolBalance, getKeypairFromBs58, getSafeTokenBalance, buildSellTx, buildBuyTx, calcTokenAmounts, buildMintIx, buildMintBuyIx, buildMintBuyTxLamports, buildMintBuyTxBuffer, buildSellTxBuffer, buildInitializeTx, buildBuyTxBufferContract, buildRecoverTx, buildBuyTxWithBuffer, buildSellTxWithBuffer } = require("../utils/pumpfun");
-const { getTipAccounts, sendBundles, createAndSendBundleTransaction, useJitoTipAddr, getJitoTipAccount, sendBundleTrxWithTip, getTipTrx, jitoWithAxios, jitoWithSearcher, CreateJitoTipInstruction } = require("../utils/jito");
-const { createLookupTable, makeVerTxWithLUT, addPoolKeysToTable, addPubKeysToTable, getLUTAccout, makeVerTx } = require("../utils/lookupTable");
+const { 
+    getSolAmountsSimulate, 
+    getPumpPoolKeys, 
+    buildMintTx, 
+    buildMintBuyTx, 
+    buildMintBuyTxV2, 
+    getSafeSolBalance, 
+    getKeypairFromBs58, 
+    getSafeTokenBalance, 
+    buildSellTx, 
+    buildBuyTx, 
+    calcTokenAmounts, 
+    buildMintIx, 
+    buildMintBuyIx, 
+    buildMintBuyTxLamports, 
+    buildMintBuyTxBuffer, 
+    buildSellTxBuffer, 
+    buildInitializeTx, 
+    buildBuyTxBufferContract, 
+    buildRecoverTx, 
+    buildBuyTxWithBuffer, 
+    buildSellTxWithBuffer 
+} = require("../utils/pumpfun");
+const { 
+    sendJitoBundle, 
+    CreateJitoTipInstruction, 
+    sendBundleConfirmTxId 
+} = require("../utils/jito");
+const { createLookupTable, makeVerTxWithLUT, addPoolKeysToTable, addPubKeysToTable, addAllPubkeysInBundles, getLUTAccout, makeVerTx } = require("../utils/lookupTable");
 // const { addLog } = require("../utils/log");
 
 const {
@@ -334,7 +360,7 @@ exports.checkCreateProjectMode = async (req, res) => {
 };
 
 exports.createProject = async (req, res) => {
-    const { name, paymentId, address, platform } = req.body;
+    const { name, paymentId, address, platform, isToken2022 } = req.body;
     console.log("Creating project...", req.user.name, name, paymentId, address);
 
     // if (Number(paymentId) > 0 && !isValidAddress(address)) {
@@ -428,6 +454,7 @@ exports.createProject = async (req, res) => {
                     tokenUri: "",
                     privateKey: "",
                 },
+                isToken2022,
                 poolInfo: {},
                 zombie: "",
                 wallets: [],
@@ -2674,573 +2701,6 @@ exports.simulateFairBuyTokens = async (req, res) => {
     }
 }
 
-
-// exports.simulateBuyPumpfunTokens = async (req, res) => {
-//     const { projectId, token, tokenAmount, solAmount, zombie, wallets } = req.body;
-//     console.log("Simulating...", projectId, token, tokenAmount, solAmount, wallets);
-//     try {
-//         const project = await Project.findById(projectId);
-//         if ((req.user.role !== "admin" && project.userId !== req.user._id.toString()) || project.status !== "OPEN") {
-//             console.log("Mismatched user id!");
-//             res.status(401).json({
-//                 success: false,
-//                 error: "User ID mismatch",
-//             });
-//             return;
-//         }
-
-//         for (let i = 0; i < wallets.length; i++) {
-//             const matched = project.wallets.find(item => item.address === wallets[i].address);
-//             if (!matched) {
-//                 console.log("Mismatched wallets!");
-//                 res.status(401).json({
-//                     success: false,
-//                     error: "Wallet mismatch",
-//                 });
-//                 return;
-//             }
-//         }
-
-//         res.status(200).json({
-//             success: true
-//         });
-
-//         const clients = getWebSocketClientList();
-//         const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
-//         try {
-//             let zombieWallet;
-//             if (zombie.privateKey !== "") {
-//                 zombieWallet = Keypair.fromSecretKey(bs58.decode(zombie.privateKey));
-//                 const walletItem = await Wallet.findOne({ address: zombieWallet.publicKey.toBase58() });
-//                 if (!walletItem) {
-//                     await Wallet.create({
-//                         address: zombieWallet.publicKey.toBase58(),
-//                         privateKey: zombie.privateKey,
-//                         category: "zombie",
-//                         userId: project.userId,
-//                     });
-//                 }
-//             }
-//             else
-//                 zombieWallet = await getZombieWallet(project);
-
-//             if (!zombieWallet) {
-//                 logToClients(myClients, "Zombie wallet not set", false);
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("SIMULATE_COMPLETED", JSON.stringify({ message: "Failed", error: "Zombie wallet not set" }));
-//                 return;
-//             }
-
-//             const { connection } = useConnection();
-
-//             project.zombie = zombieWallet.publicKey.toBase58();
-//             console.log("Saving zombie address:", project.zombie);
-//             await project.save();
-
-//             const jitoTip = req.user.presets.jitoTip;
-//             console.log("Jito Tip:", jitoTip);
-
-//             const mint = new PublicKey(token);
-//             const mintInfo = {
-//                 supply: "999990000",
-//                 decimals: "0"//project.token.decimals
-//             };
-
-//             logToClients(myClients, "Calculating sol amount to buy tokens...", false, project.extraWallets[0]);
-//             const { teamWallets, extraWallets } = await updateTeamAndExtraWallets(
-//                 project.teamWallets.map(item => {
-//                     return {
-//                         address: item.address,
-//                         initialTokenAmount: "",
-//                         sim: {
-//                             disperseAmount: "",
-//                             buy: {
-//                                 tokenAmount: "",
-//                                 solAmount: "",
-//                             },
-//                             xfer: {
-//                                 fromAddress: "",
-//                                 tokenAmount: "",
-//                             }
-//                         }
-//                     };
-//                 }),
-//                 project.extraWallets.map(item => {
-//                     return {
-//                         address: item.address,
-//                         initialTokenAmount: "",
-//                         sim: {
-//                             disperseAmount: "",
-//                             buy: {
-//                                 tokenAmount: "",
-//                                 solAmount: "",
-//                             },
-//                             xfer: {
-//                                 fromAddress: "",
-//                                 tokenAmount: "",
-//                             }
-//                         }
-//                     };
-//                 }),
-//                 mintInfo
-//             );
-
-//             console.log("teamWallets", teamWallets, "extraWallets", extraWallets);
-
-//             const tWallets = wallets.map(item => {
-//                 return {
-//                     address: item.address,
-//                     initialTokenAmount: item.initialTokenAmount.toString(),
-//                     initialSolAmount: item.initialSolAmount.toString(),
-//                     sim: {
-//                         enabled: true,
-//                         disperseAmount: "",
-//                         buy: {
-//                             tokenAmount: "",
-//                             solAmount: "",
-//                         },
-//                         xfer: {
-//                             fromAddress: "",
-//                             tokenAmount: "",
-//                         }
-//                     }
-//                 };
-//             });
-
-//             let buyItemCount = 0;
-//             const PUMP_TOKEN_LIMIT = 793100000;
-//             let totalTokenAmount = 0;
-//             totalTokenAmount = 1000000000 * PAYMENT_OPTIONS[project.paymentId].token / 100;
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < teamWallets.length; i++) {
-//                 // Check token amount overflow
-//                 let initialTokenAmount = Number(teamWallets[i].initialTokenAmount);
-//                 totalTokenAmount += initialTokenAmount;
-//             }
-
-//             for (let i = 0; i < extraWallets.length; i++) {
-//                 // Check token amount overflow
-//                 let initialTokenAmount = Number(extraWallets[i].initialTokenAmount);
-//                 totalTokenAmount += initialTokenAmount;
-//             }
-//             // }
-
-//             const PUMPFUN_BUNDLE_BUY_COUNT = parseInt(process.env.PUMPFUN_BUNDLE_BUY_COUNT);
-//             for (let i = 0; i < tWallets.length; i++) {
-
-//                 if (project.paymentId == 1) {
-//                     if (i > 0) {
-//                         if ((Number(tWallets[i].initialTokenAmount) > 10000000)) {
-//                             logToClients(myClients, "Invalid token amount", false);
-//                             for (let k = 0; k < myClients.length; k++)
-//                                 myClients[k].emit("SIMULATE_COMPLETED", JSON.stringify({ message: "Failed", error: "Token amount per wallet must be less than 10000000." }));
-//                             return;
-//                         }
-                       
-//                     } else {
-//                         let totalAmountExceptForDev = tWallets.slice(1, tWallets.length).reduce((acc, val) => acc + Number(val.initialTokenAmount), 0);
-//                         const realDevTokenAmount = Number(tWallets[0].initialTokenAmount) - totalAmountExceptForDev;
-//                         if (realDevTokenAmount > 10000000 || realDevTokenAmount <= 0) {
-//                             logToClients(myClients, "Invalid token amount", false);
-//                             for (let k = 0; k < myClients.length; k++)
-//                                 myClients[k].emit("SIMULATE_COMPLETED", JSON.stringify({ message: "Failed", error: "Dev Real Trade Token Amount must be less than 10000000 or greater than 0." }));
-//                             return;
-//                         }
-//                     }
-//                 }
-
-//                 // Check token amount overflow
-//                 let initialTokenAmount = Number(tWallets[i].initialTokenAmount);
-//                 let remainedTokenAmount = PUMP_TOKEN_LIMIT - totalTokenAmount;
-//                 if (remainedTokenAmount < initialTokenAmount) {
-//                     initialTokenAmount = remainedTokenAmount;
-//                     tWallets[i].initialTokenAmount = initialTokenAmount.toString();
-//                 }
-
-//                 totalTokenAmount += initialTokenAmount;
-
-//                 const index = i % PUMPFUN_BUNDLE_BUY_COUNT;
-//                 if (tWallets[index].sim.buy.tokenAmount !== "") {
-//                     tWallets[index].sim.buy.tokenAmount += initialTokenAmount;
-//                 }
-//                 else {
-//                     tWallets[index].sim.buy.tokenAmount = initialTokenAmount;
-//                     // if (buyItemCount == 0)
-//                     //     tWallets[index].sim.buy.tokenAmount += 1000000000 * PAYMENT_OPTIONS[project.paymentId].token / 100;
-//                     buyItemCount++;
-//                 }
-//             }
-
-//             console.log("buyItemCount:", buyItemCount);
-
-//             if (buyItemCount >= 2)
-//                 tWallets[1].sim.buy.tokenAmount += 1000000000 * PAYMENT_OPTIONS[project.paymentId].token / 100;
-//             else
-//                 tWallets[0].sim.buy.tokenAmount += 1000000000 * PAYMENT_OPTIONS[project.paymentId].token / 100;
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < teamWallets.length; i++) {
-//                 let initialTokenAmount = Number(teamWallets[i].initialTokenAmount);
-
-//                 const index = i % buyItemCount;
-//                 if (buyItemCount >= 2)
-//                     tWallets[index + 1].sim.buy.tokenAmount += initialTokenAmount;
-//                 else
-//                     tWallets[index].sim.buy.tokenAmount += initialTokenAmount;
-//             }
-
-//             for (let i = 0; i < extraWallets.length; i++) {
-//                 let initialTokenAmount = Number(extraWallets[i].initialTokenAmount);
-//                 extraWallets[i].sim.buy.tokenAmount = initialTokenAmount;
-//             }
-//             // }
-
-//             // for (let i = 0; i < buyItemCount; i++) {
-//             //     const baseTokenAmount = new TokenAmount(baseToken, tWallets[i].sim.buy.tokenAmount.toString(), false);
-//             //     const { maxAmountIn: maxQuoteTokenAmount } = Liquidity.computeAmountIn({
-//             //         poolKeys: poolKeys,
-//             //         poolInfo: extraPoolInfo,
-//             //         amountOut: baseTokenAmount,
-//             //         currencyIn: quoteToken,
-//             //         slippage: slippage,
-//             //     });
-
-//             //     tWallets[i].sim.buy.tokenAmount = baseTokenAmount.raw.toString();
-//             //     tWallets[i].sim.buy.solAmount = maxQuoteTokenAmount.raw.toString();
-
-//             //     extraPoolInfo.baseReserve = extraPoolInfo.baseReserve.sub(baseTokenAmount.raw);
-//             //     extraPoolInfo.quoteReserve = extraPoolInfo.quoteReserve.add(maxQuoteTokenAmount.raw);
-//             // }
-
-//             let tokenAmounts = [];
-
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 if (tWallets[i].sim.buy.tokenAmount !== "")
-//                     tokenAmounts.push(tWallets[i].sim.buy.tokenAmount);
-//             }
-
-//             console.log("tokenAmounts", tokenAmounts);
-
-//             // for (let i = 0; i < extraWallets.length; i++) {
-//             //     if (extraWallets[i].sim.buy.tokenAmount !== "")
-//             //         tokenAmounts.push(extraWallets[i].sim.buy.tokenAmount);
-//             // }
-
-//             const virtualInitSolReserve = 30.0;
-//             const virtualInitTokenReserve = 1073000000;
-
-//             const slippage = 10;
-
-//             const solAmounts = await getSolAmountsSimulate(
-//                 virtualInitSolReserve,
-//                 virtualInitTokenReserve,
-//                 tokenAmounts,
-//                 extraWallets,
-//                 slippage
-//             );
-
-//             let count = 0;
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 if (tWallets[i].sim.buy.tokenAmount !== "") {
-//                     tWallets[i].sim.buy.solAmount = solAmounts[count] * LAMPORTS_PER_SOL * (1 + slippage / 100);
-//                     count++;
-//                 }
-//             }
-
-//             for (let i = 0; i < extraWallets.length; i++) {
-//                 if (extraWallets[i].sim.buy.tokenAmount !== "") {
-//                     extraWallets[i].sim.buy.solAmount = solAmounts[count] * LAMPORTS_PER_SOL * (1 + slippage / 100);
-//                     count++;
-//                 }
-//             }
-
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 const index = i % buyItemCount;
-//                 tWallets[i].sim.xfer = {
-//                     fromAddress: tWallets[index].address,
-//                     tokenAmount: tWallets[i].initialTokenAmount,
-//                 };
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < teamWallets.length; i++) {
-//                 const index = i % buyItemCount;
-//                 if (buyItemCount >= 2)
-//                     teamWallets[index].sim.xfer = {
-//                         fromAddress: tWallets[index + 1].address,
-//                         tokenAmount: teamWallets[i].initialTokenAmount.toString(),
-//                     };
-//                 else
-//                     teamWallets[i].sim.xfer = {
-//                         fromAddress: tWallets[index].address,
-//                         tokenAmount: teamWallets[i].initialTokenAmount.toString(),
-//                     };
-//             }
-//             // }
-
-//             console.log("====== teamWallets.count ", teamWallets.length)
-
-//             // if (project.paymentId != 1) {
-//             if (project.teamWallets.length !== teamWallets.length) {
-//                 if (project.teamWallets.length < teamWallets.length) {
-//                     for (let i = project.teamWallets.length; i < teamWallets.length; i++) {
-//                         const keypair = Keypair.generate();
-//                         project.teamWallets = [
-//                             ...project.teamWallets,
-//                             {
-//                                 address: keypair.publicKey.toBase58(),
-//                                 initialTokenAmount: "",
-//                                 sim: {
-//                                     disperseAmount: "",
-//                                     buy: {
-//                                         solAmount: "",
-//                                         tokenAmount: "",
-//                                     },
-//                                     xfer: {
-//                                         fromAddress: "",
-//                                         tokenAmount: "",
-//                                     }
-//                                 }
-//                             }
-//                         ];
-//                         await Wallet.create({
-//                             address: keypair.publicKey.toBase58(),
-//                             privateKey: bs58.encode(keypair.secretKey),
-//                             category: "team",
-//                             userId: "admin",
-//                         });
-//                     }
-//                 }
-//                 else {
-//                     const count = project.teamWallets.length - teamWallets.length;
-//                     project.teamWallets.splice(teamWallets.length, count);
-//                 }
-//             }
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 project.teamWallets[i].initialTokenAmount = teamWallets[i].initialTokenAmount;
-//                 project.teamWallets[i].sim = {
-//                     disperseAmount: "",
-//                     buy: teamWallets[i].sim.buy,
-//                     xfer: teamWallets[i].sim.xfer,
-//                 };
-//                 // console.log("Team Wallet:", i, project.teamWallets[i]);
-//             }
-
-//             if (project.extraWallets.length !== extraWallets.length) {
-//                 if (project.extraWallets.length < extraWallets.length) {
-//                     for (let i = project.extraWallets.length; i < extraWallets.length; i++) {
-//                         const keypair = Keypair.generate();
-//                         project.extraWallets = [
-//                             ...project.extraWallets,
-//                             {
-//                                 address: keypair.publicKey.toBase58(),
-//                                 initialTokenAmount: "",
-//                                 sim: {
-//                                     disperseAmount: "",
-//                                     buy: {
-//                                         solAmount: "",
-//                                         tokenAmount: "",
-//                                     },
-//                                     xfer: {
-//                                         fromAddress: "",
-//                                         tokenAmount: "",
-//                                     }
-//                                 }
-//                             }
-//                         ];
-//                         await Wallet.create({
-//                             address: keypair.publicKey.toBase58(),
-//                             privateKey: bs58.encode(keypair.secretKey),
-//                             category: "team",
-//                             userId: "admin",
-//                         });
-//                     }
-//                 }
-//                 else {
-//                     const count = project.extraWallets.length - extraWallets.length;
-//                     project.extraWallets.splice(extraWallets.length, count);
-//                 }
-//             }
-//             for (let i = 0; i < project.extraWallets.length; i++) {
-//                 project.extraWallets[i].initialTokenAmount = extraWallets[i].initialTokenAmount;
-//                 project.extraWallets[i].sim = {
-//                     disperseAmount: "",
-//                     buy: extraWallets[i].sim.buy,
-//                 };
-//             }
-
-//             await project.save();
-//             // }
-
-//             logToClients(myClients, "Calculating sol amount to disperse...", false);
-//             let createATASols = {};
-//             let totalAmount = new BN(0);
-//             const createLUTFee = new BN(0.006 * LAMPORTS_PER_SOL).add(new BN(LAMPORTS_PER_SOL * jitoTip * 2));
-//             const disperseFee = new BN(0.01 * LAMPORTS_PER_SOL);
-//             const swapFee = new BN(0.01 * LAMPORTS_PER_SOL);
-//             const transferFee = new BN(0.01 * LAMPORTS_PER_SOL);
-//             const createATAFee = new BN(0.01 * LAMPORTS_PER_SOL);
-//             const pumpfunFee = new BN(0.02 * LAMPORTS_PER_SOL);
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 const index = i % buyItemCount;
-
-//                 if (createATASols[index])
-//                     createATASols[index] = createATASols[index].add(createATAFee);
-//                 else
-//                     createATASols[index] = createATAFee;
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 const index = i % buyItemCount;
-//                 const pubkey = new PublicKey(project.teamWallets[i].address);
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, pubkey);
-//                 try {
-//                     await sleep(20);
-//                     const info = await connection.getAccountInfo(associatedToken);
-//                     if (!info) {
-//                         if (createATASols[index])
-//                             createATASols[index] = createATASols[index].add(createATAFee);
-//                         else
-//                             createATASols[index] = createATAFee;
-//                     }
-//                 }
-//                 catch (err) {
-//                     console.log(err);
-//                 }
-//             }
-//             // }
-
-//             if (PAYMENT_OPTIONS[project.paymentId].token > 0) {
-//                 const pubkey = new PublicKey(getTaxWallet());
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, pubkey);
-//                 try {
-//                     await sleep(20);
-//                     const info = await connection.getAccountInfo(associatedToken);
-//                     if (!info) {
-//                         if (buyItemCount >= 2)
-//                             createATASols[1] = createATASols[1].add(createATAFee);
-//                         else
-//                             createATASols[0] = createATASols[0].add(createATAFee);
-//                     }
-//                 } catch (err) {
-//                     console.log(err);
-//                 }
-//             }
-
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 const itemSolAmount = tWallets[i].initialSolAmount.replaceAll(" ", "").replaceAll(",", "");
-//                 let amount = itemSolAmount !== "" ? xWeiAmount(itemSolAmount, 9).add(new BN(LAMPORTS_PER_SOL * jitoTip)) : new BN(LAMPORTS_PER_SOL * jitoTip);
-
-//                 if (i < buyItemCount) {
-//                     const solAmountToBuy = new BN(tWallets[i].sim.buy.solAmount);
-//                     amount = amount.add(swapFee).add(solAmountToBuy);
-//                     if (createATASols[i])
-//                         amount = amount.add(createATASols[i]);
-//                     amount = amount.add(new BN(LAMPORTS_PER_SOL * jitoTip * 10));
-//                 }
-//                 else
-//                     amount = amount.add(transferFee);
-
-//                 const pubkey = new PublicKey(tWallets[i].address);
-//                 await sleep(20);
-//                 let balance = await connection.getBalance(pubkey);
-//                 balance = new BN(balance.toString());
-//                 if (amount.gt(balance))
-//                     amount = amount.sub(balance);
-//                 else
-//                     amount = new BN(0);
-
-//                 if (i === 0)
-//                     amount = amount.add(pumpfunFee);
-
-//                 tWallets[i].sim.disperseAmount = amount.toString();
-//                 totalAmount = totalAmount.add(amount);
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 const itemSolAmount = new BN(LAMPORTS_PER_SOL * 0.05);
-//                 let amount = transferFee.add(itemSolAmount);
-//                 const pubkey = new PublicKey(project.teamWallets[i].address);
-//                 await sleep(20);
-//                 let balance = await connection.getBalance(pubkey);
-//                 balance = new BN(balance.toString());
-//                 if (amount.gt(balance))
-//                     amount = amount.sub(balance);
-//                 else
-//                     amount = new BN(0);
-
-//                 project.teamWallets[i].sim.disperseAmount = amount.toString();
-//                 totalAmount = totalAmount.add(amount);
-//             }
-//             // }
-
-//             totalAmount = totalAmount.add(disperseFee).add(new BN(LAMPORTS_PER_SOL * 0.1));
-//             totalAmount = totalAmount.add(createLUTFee);
-//             console.log("totalAmount ", totalAmount.toString())
-
-//             let zombieBalance = await connection.getBalance(zombieWallet.publicKey);
-//             zombieBalance = new BN(zombieBalance.toString());
-//             if (totalAmount.gt(zombieBalance))
-//                 totalAmount = totalAmount.sub(zombieBalance);
-//             else
-//                 totalAmount = new BN(0);
-
-//             // =============================================================================== //
-//             console.log("Saving changes...");
-//             for (let i = 0; i < project.wallets.length; i++)
-//                 project.wallets[i].sim.enabled = false;
-//             for (let i = 0; i < tWallets.length; i++) {
-//                 for (let j = 0; j < project.wallets.length; j++) {
-//                     if (tWallets[i].address === project.wallets[j].address) {
-//                         project.wallets[j].initialTokenAmount = tWallets[i].initialTokenAmount;
-//                         project.wallets[j].initialSolAmount = tWallets[i].initialSolAmount;
-//                         project.wallets[j].sim = tWallets[i].sim;
-//                         break;
-//                     }
-//                 }
-//             }
-
-//             await project.save();
-
-//             const data = {
-//                 projectId: project._id.toString(),
-//                 token: project.token,
-//                 tokenAmount: tokenAmount,
-//                 solAmount: solAmount,
-//                 poolInfo: project.poolInfo,
-//                 zombie: { address: zombieWallet.publicKey.toBase58(), value: totalAmount.toString() },
-//                 wallets: tWallets,
-//             };
-//             // console.log("Simulate Data:", data);
-//             console.log("Success");
-
-//             for (let k = 0; k < myClients.length; k++) {
-//                 myClients[k].emit("SIMULATE_COMPLETED",
-//                     JSON.stringify({
-//                         message: "OK",
-//                         data: data,
-//                     })
-//                 );
-//             }
-//         }
-//         catch (err) {
-//             logToClients(myClients, err, true);
-//             for (let k = 0; k < myClients.length; k++)
-//                 myClients[k].emit("SIMULATE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//         }
-//     }
-//     catch (err) {
-//         console.log(err);
-//         res.status(401).json({
-//             success: false,
-//             error: "Unknown error",
-//         });
-//     }
-// }
-
 exports.simulateBuyPumpfunTokens = async (req, res) => {
     const { projectId, token, tokenAmount, solAmount, zombie, wallets } = req.body;
     console.log("Simulating...", projectId, token, tokenAmount, solAmount, wallets);
@@ -3392,7 +2852,6 @@ exports.simulateBuyPumpfunTokens = async (req, res) => {
             }
             // }
 
-            const PUMPFUN_BUNDLE_BUY_COUNT = parseInt(process.env.PUMPFUN_BUNDLE_BUY_COUNT);
             for (let i = 0; i < tWallets.length; i++) {
 
                 if (project.paymentId == 1) {
@@ -3448,7 +2907,8 @@ exports.simulateBuyPumpfunTokens = async (req, res) => {
                 }
             }
 
-            tWallets[index].sim.buy.tokenAmount = allTokenAmount
+            // comment by butler
+            // tWallets[index].sim.buy.tokenAmount = allTokenAmount
 
             console.log("tokenAmounts", tokenAmounts, "allTokenAmount", allTokenAmount);
 
@@ -3485,6 +2945,7 @@ exports.simulateBuyPumpfunTokens = async (req, res) => {
             const transferFee = new BN(0.01 * LAMPORTS_PER_SOL);
             const createATAFee = new BN(0.002 * LAMPORTS_PER_SOL);
             const pumpfunFee = new BN(0.02 * LAMPORTS_PER_SOL);
+            const lutFee = new BN(0.01 * LAMPORTS_PER_SOL);
             for (let i = 0; i < tWallets.length; i++) {
                 createATASols[i] = createATAFee;
             } 
@@ -3516,11 +2977,21 @@ exports.simulateBuyPumpfunTokens = async (req, res) => {
                     amount = amount.add(createATASols[i]);
                 amount = amount.add(new BN(LAMPORTS_PER_SOL * jitoTip));
 
-                if (i === 0)
+                if (i === 0) {
                     amount = amount.add(pumpfunFee);
+                    amount = amount.add(lutFee);
+                }
+
+                // Subtract buyer wallet's current SOL balance so we only disperse what's needed
+                try {
+                    const walletBalance = new BN(await connection.getBalance(new PublicKey(tWallets[i].address)));
+                    amount = amount.sub(walletBalance);
+                    if (amount.lt(new BN(0))) amount = new BN(0);
+                } catch (err) {
+                    console.log("getBalance for", tWallets[i].address, err?.message || err);
+                }
 
                 console.log("index", i, "solAmount", amount.toString());
-
 
                 tWallets[i].sim.disperseAmount = BigInt(Math.round(amount.toNumber())).toString();
                 totalAmount = totalAmount.add(amount);
@@ -5075,272 +4546,272 @@ exports.disperseSOLsViaMirrors = async (req, res) => {
     }
 }
 
-// exports.pumpfunDisperseSOLs = async (req, res) => {
-//     const { simulateData } = req.body;
-//     console.log("Dispersing SOL...", simulateData);
-//     try {
-//         const project = await Project.findById(simulateData.projectId);
-//         if (req.user.role === "admin" || project.userId !== req.user._id.toString() || project.status !== "OPEN") {
-//             console.log("Mismatched user id or Not activated project!");
-//             res.status(401).json({
-//                 success: false,
-//                 error: "User ID mismatch Or Not activated project",
-//             });
-//             return;
-//         }
+exports.pumpfunDisperseSOLs_v1 = async (req, res) => {
+    const { simulateData } = req.body;
+    console.log("Dispersing SOL...", simulateData);
+    try {
+        const project = await Project.findById(simulateData.projectId);
+        if (req.user.role === "admin" || project.userId !== req.user._id.toString() || project.status !== "OPEN") {
+            console.log("Mismatched user id or Not activated project!");
+            res.status(401).json({
+                success: false,
+                error: "User ID mismatch Or Not activated project",
+            });
+            return;
+        }
 
-//         res.status(200).json({
-//             success: true
-//         });
+        res.status(200).json({
+            success: true
+        });
 
-//         const clients = getWebSocketClientList();
-//         const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
-//         try {
-//             const zombieWallet = await getZombieWallet(project);
-//             if (!zombieWallet) {
-//                 logToClients(myClients, "ERROR: Zombie wallet not set", false);
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                 return;
-//             }
+        const clients = getWebSocketClientList();
+        const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
+        try {
+            const zombieWallet = await getZombieWallet(project);
+            if (!zombieWallet) {
+                logToClients(myClients, "ERROR: Zombie wallet not set", false);
+                for (let k = 0; k < myClients.length; k++)
+                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                return;
+            }
 
-//             const { connection } = useConnection();
-//             let addresses = [];
-//             let amounts = [];
-//             for (let i = 0; i < simulateData.wallets.length; i++) {
-//                 if (simulateData.wallets[i].sim.disperseAmount !== "" && simulateData.wallets[i].sim.disperseAmount !== "0") {
-//                     addresses.push(simulateData.wallets[i].address);
-//                     amounts.push(simulateData.wallets[i].sim.disperseAmount);
-//                 }
-//             }
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (project.teamWallets[i].sim.disperseAmount !== "" && project.teamWallets[i].sim.disperseAmount !== "0") {
-//                     addresses.push(project.teamWallets[i].address);
-//                     amounts.push(project.teamWallets[i].sim.disperseAmount);
-//                 }
-//             }
+            const { connection } = useConnection();
+            let addresses = [];
+            let amounts = [];
+            for (let i = 0; i < simulateData.wallets.length; i++) {
+                if (simulateData.wallets[i].sim.disperseAmount !== "" && simulateData.wallets[i].sim.disperseAmount !== "0") {
+                    addresses.push(simulateData.wallets[i].address);
+                    amounts.push(simulateData.wallets[i].sim.disperseAmount);
+                }
+            }
+            for (let i = 0; i < project.teamWallets.length; i++) {
+                if (project.teamWallets[i].sim.disperseAmount !== "" && project.teamWallets[i].sim.disperseAmount !== "0") {
+                    addresses.push(project.teamWallets[i].address);
+                    amounts.push(project.teamWallets[i].sim.disperseAmount);
+                }
+            }
 
-//             if (project.token.authority) {
-//                 let balanceOfAuthority = await connection.getBalance(new PublicKey(project.token.authority));
-//                 balanceOfAuthority = new BN(balanceOfAuthority.toString());
-//                 let needBalanceOfAuthority = new BN(0.05 * LAMPORTS_PER_SOL);
-//                 if (needBalanceOfAuthority.gt(balanceOfAuthority)) {
-//                     needBalanceOfAuthority = needBalanceOfAuthority.sub(balanceOfAuthority);
-//                 }
-//                 addresses.push(project.token.authority);
-//                 amounts.push(needBalanceOfAuthority.toString())
-//             }
+            if (project.token.authority) {
+                let balanceOfAuthority = await connection.getBalance(new PublicKey(project.token.authority));
+                balanceOfAuthority = new BN(balanceOfAuthority.toString());
+                let needBalanceOfAuthority = new BN(0.05 * LAMPORTS_PER_SOL);
+                if (needBalanceOfAuthority.gt(balanceOfAuthority)) {
+                    needBalanceOfAuthority = needBalanceOfAuthority.sub(balanceOfAuthority);
+                }
+                addresses.push(project.token.authority);
+                amounts.push(needBalanceOfAuthority.toString())
+            }
 
-//             for (let i = 0; i < addresses.length; i++) {
-//                 console.log("address:", addresses[i], " amount:", amounts[i]);
-//             }  
-//             // Randomize
-//             let rAddresses = [];
-//             let rAmounts = [];
-//             while (addresses.length > 0) {
-//                 const randomIndex = getRandomNumber(0, addresses.length - 1);
-//                 rAddresses.push(addresses[randomIndex]);
-//                 rAmounts.push(amounts[randomIndex]);
-//                 addresses.splice(randomIndex, 1);
-//                 amounts.splice(randomIndex, 1);
-//             }
+            for (let i = 0; i < addresses.length; i++) {
+                console.log("address:", addresses[i], " amount:", amounts[i]);
+            }  
+            // Randomize
+            let rAddresses = [];
+            let rAmounts = [];
+            while (addresses.length > 0) {
+                const randomIndex = getRandomNumber(0, addresses.length - 1);
+                rAddresses.push(addresses[randomIndex]);
+                rAmounts.push(amounts[randomIndex]);
+                addresses.splice(randomIndex, 1);
+                amounts.splice(randomIndex, 1);
+            }
 
-//             if (rAddresses.length === 0) {
+            if (rAddresses.length === 0) {
 
-//                 logToClients(myClients, "Success", false);
-//                 const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-//                 for (let k = 0; k < myClients.length; k++) {
-//                     if (myClients[k].user.role === "admin")
-//                         myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-//                     else
-//                         myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
-//                 }
+                logToClients(myClients, "Success", false);
+                const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                for (let k = 0; k < myClients.length; k++) {
+                    if (myClients[k].user.role === "admin")
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                    else
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+                }
 
-//                 return;
-//             }
+                return;
+            }
 
-//             // const USE_JITO = true;
-//             // if (USE_JITO) {
-//             //     const jitoTip = 0.0006;
-//             //     console.log("Jito Tip:", jitoTip);
+            const USE_JITO = true;
+            if (USE_JITO) {
+                const jitoTip = 0.0006;
+                console.log("Jito Tip:", jitoTip);
 
-//             //     const zero = new BN(0);
-//             //     let bundleIndex = -1;
-//             //     let bundleItems = [];
-//             //     let index = 0;
-//             //     console.log("rAddresses: ", rAddresses)
+                const zero = new BN(0);
+                let bundleIndex = -1;
+                let bundleItems = [];
+                let index = 0;
+                console.log("rAddresses: ", rAddresses)
 
 
-//             //     if (rAddresses.length === 0) {
-//             //         logToClients(myClients, "Success", false);
-//             //         const projectForUsers = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-//             //         for (let k = 0; k < myClients.length; k++) {
-//             //             if (myClients[k].user.role === "admin")
-//             //                 myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-//             //             else
-//             //                 myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUsers }));
-//             //         }
-//             //     }
+                if (rAddresses.length === 0) {
+                    logToClients(myClients, "Success", false);
+                    const projectForUsers = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                    for (let k = 0; k < myClients.length; k++) {
+                        if (myClients[k].user.role === "admin")
+                            myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                        else
+                            myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUsers }));
+                    }
+                }
 
-//             //     if (!project.isTipPayed && process.env.TIP_ADDRESS && isValidAddress(process.env.TIP_ADDRESS)) {
-//             //         const tipAddress = process.env.TIP_ADDRESS;
-//             //         const tipAmount = project.tipAmount
-//             //         const pos = rAddresses.length >= 2 ? rAddresses.length - 2 : rAddresses.length - 1;
-//             //         rAddresses.splice(pos, 0, tipAddress);
-//             //         rAmounts.splice(pos, 0, tipAmount);
-//             //     }
+                if (!project.isTipPayed && process.env.TIP_ADDRESS && isValidAddress(process.env.TIP_ADDRESS)) {
+                    const tipAddress = process.env.TIP_ADDRESS;
+                    const tipAmount = project.tipAmount
+                    const pos = rAddresses.length >= 2 ? rAddresses.length - 2 : rAddresses.length - 1;
+                    rAddresses.splice(pos, 0, tipAddress);
+                    rAmounts.splice(pos, 0, tipAmount);
+                }
 
-//             //     while (index < rAddresses.length) {
-//             //         let count = rAddresses.length - index;
-//             //         if (count > 15)
-//             //             count = 15;
+                while (index < rAddresses.length) {
+                    let count = rAddresses.length - index;
+                    if (count > 15)
+                        count = 15;
 
-//             //         let instructions = [];
-//             //         for (let i = index; i < index + count; i++) {
-//             //             const solAmount = new BN(rAmounts[i]);
-//             //             if (solAmount.gt(zero)) {
-//             //                 instructions.push(
-//             //                     SystemProgram.transfer({
-//             //                         fromPubkey: zombieWallet.publicKey,
-//             //                         toPubkey: new PublicKey(rAddresses[i]),
-//             //                         lamports: rAmounts[i]
-//             //                     })
-//             //                 );
-//             //             }
-//             //         }
+                    let instructions = [];
+                    for (let i = index; i < index + count; i++) {
+                        const solAmount = new BN(rAmounts[i]);
+                        if (solAmount.gt(zero)) {
+                            instructions.push(
+                                SystemProgram.transfer({
+                                    fromPubkey: zombieWallet.publicKey,
+                                    toPubkey: new PublicKey(rAddresses[i]),
+                                    lamports: rAmounts[i]
+                                })
+                            );
+                        }
+                    }
 
-//             //         if (instructions.length > 0) {
-//             //             console.log(`Transfer Instructions(${index}-${index + count - 1}):`, instructions.length);
-//             //             if (bundleItems[bundleIndex] && bundleItems[bundleIndex].length < 4) {
-//             //                 bundleItems[bundleIndex].push({
-//             //                     instructions: instructions,
-//             //                     payer: zombieWallet.publicKey,
-//             //                     signers: [zombieWallet],
-//             //                 });
-//             //             }
-//             //             else {
-//             //                 bundleItems.push([
-//             //                     {
-//             //                         instructions: instructions,
-//             //                         payer: zombieWallet.publicKey,
-//             //                         signers: [zombieWallet],
-//             //                     }
-//             //                 ]);
-//             //                 bundleIndex++;
-//             //             }
-//             //         }
+                    if (instructions.length > 0) {
+                        console.log(`Transfer Instructions(${index}-${index + count - 1}):`, instructions.length);
+                        if (bundleItems[bundleIndex] && bundleItems[bundleIndex].length < 4) {
+                            bundleItems[bundleIndex].push({
+                                instructions: instructions,
+                                payer: zombieWallet.publicKey,
+                                signers: [zombieWallet],
+                            });
+                        }
+                        else {
+                            bundleItems.push([
+                                {
+                                    instructions: instructions,
+                                    payer: zombieWallet.publicKey,
+                                    signers: [zombieWallet],
+                                }
+                            ]);
+                            bundleIndex++;
+                        }
+                    }
 
-//             //         index += count;
-//             //     }
+                    index += count;
+                }
 
-//             //     console.log("-----")
-//             //     let bundleTxns = [];
-//             //     const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-//             //     for (let i = 0; i < bundleItems.length; i++) {
-//             //         const bundleItem = bundleItems[i];
-//             //         console.log(bundleItem)
-//             //         let verTxns = [];
-//             //         for (let j = 0; j < bundleItem.length; j++) {
-//             //             if (j === bundleItem.length - 1) {
-//             //                 bundleItem[j].instructions = [
-//             //                     CreateTraderAPITipInstruction(bundleItem[j].payer, jitoTip * LAMPORTS_PER_SOL),
-//             //                     ...bundleItem[j].instructions,
-//             //                 ];
-//             //             }
-//             //             const transactionMessage = new TransactionMessage({
-//             //                 payerKey: bundleItem[j].payer,
-//             //                 instructions: bundleItem[j].instructions,
-//             //                 recentBlockhash,
-//             //             });
-//             //             const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
-//             //             tx.sign(bundleItem[j].signers);
-//             //             verTxns.push(tx);
-//             //         }
+                console.log("-----")
+                let bundleTxns = [];
+                const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+                for (let i = 0; i < bundleItems.length; i++) {
+                    const bundleItem = bundleItems[i];
+                    console.log(bundleItem)
+                    let verTxns = [];
+                    for (let j = 0; j < bundleItem.length; j++) {
+                        if (j === bundleItem.length - 1) {
+                            bundleItem[j].instructions = [
+                                CreateTraderAPITipInstruction(bundleItem[j].payer, jitoTip * LAMPORTS_PER_SOL),
+                                ...bundleItem[j].instructions,
+                            ];
+                        }
+                        const transactionMessage = new TransactionMessage({
+                            payerKey: bundleItem[j].payer,
+                            instructions: bundleItem[j].instructions,
+                            recentBlockhash,
+                        });
+                        const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
+                        tx.sign(bundleItem[j].signers);
+                        verTxns.push(tx);
+                    }
 
-//             //         bundleTxns.push(verTxns);
-//             //     }
+                    bundleTxns.push(verTxns);
+                }
 
-//             //     const ret = await buildBundlesOnNB(bundleTxns)
-//             //     if (!ret) {
-//             //         logToClients(myClients, "Failed to disperse SOL", false);
-//             //         for (let k = 0; k < myClients.length; k++)
-//             //             myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//             //         return;
-//             //     }
-//             //     project.isTipPayed = true;
-//             //     project.save();
-//             // }
-//             // else {
-//             //     const zero = new BN(0);
-//             //     let transactions = [];
-//             //     let index = 0;
-//             //     while (index < rAddresses.length) {
-//             //         let count = rAddresses.length - index;
-//             //         if (count > 15)
-//             //             count = 15;
+                const ret = await buildBundlesOnNB(bundleTxns)
+                if (!ret) {
+                    logToClients(myClients, "Failed to disperse SOL", false);
+                    for (let k = 0; k < myClients.length; k++)
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                    return;
+                }
+                project.isTipPayed = true;
+                project.save();
+            }
+            // else {
+            //     const zero = new BN(0);
+            //     let transactions = [];
+            //     let index = 0;
+            //     while (index < rAddresses.length) {
+            //         let count = rAddresses.length - index;
+            //         if (count > 15)
+            //             count = 15;
 
-//             //         const tx = new Transaction();
-//             //         for (let i = index; i < index + count; i++) {
-//             //             const solAmount = new BN(rAmounts[i]);
-//             //             if (solAmount.gt(zero)) {
-//             //                 tx.add(
-//             //                     SystemProgram.transfer({
-//             //                         fromPubkey: zombieWallet.publicKey,
-//             //                         toPubkey: new PublicKey(rAddresses[i]),
-//             //                         lamports: rAmounts[i]
-//             //                     })
-//             //                 );
-//             //             }
-//             //         }
+            //         const tx = new Transaction();
+            //         for (let i = index; i < index + count; i++) {
+            //             const solAmount = new BN(rAmounts[i]);
+            //             if (solAmount.gt(zero)) {
+            //                 tx.add(
+            //                     SystemProgram.transfer({
+            //                         fromPubkey: zombieWallet.publicKey,
+            //                         toPubkey: new PublicKey(rAddresses[i]),
+            //                         lamports: rAmounts[i]
+            //                     })
+            //                 );
+            //             }
+            //         }
 
-//             //         if (tx.instructions.length > 0) {
-//             //             console.log(`Transfer Instructions(${index}-${index + count - 1}):`, tx.instructions.length);
-//             //             transactions = [
-//             //                 ...transactions,
-//             //                 {
-//             //                     transaction: tx,
-//             //                     signers: [zombieWallet],
-//             //                 }
-//             //             ];
-//             //         }
+            //         if (tx.instructions.length > 0) {
+            //             console.log(`Transfer Instructions(${index}-${index + count - 1}):`, tx.instructions.length);
+            //             transactions = [
+            //                 ...transactions,
+            //                 {
+            //                     transaction: tx,
+            //                     signers: [zombieWallet],
+            //                 }
+            //             ];
+            //         }
 
-//             //         index += count;
-//             //     }
+            //         index += count;
+            //     }
 
-//             //     if (transactions.length > 0) {
-//             //         const ret = await sendAndConfirmLegacyTransactions(connection, transactions);
-//             //         if (!ret) {
-//             //             logToClients(myClients, "Failed to disperse SOL", false);
-//             //             for (let k = 0; k < myClients.length; k++)
-//             //                 myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//             //             return;
-//             //         }
-//             //     }
-//             // }
+            //     if (transactions.length > 0) {
+            //         const ret = await sendAndConfirmLegacyTransactions(connection, transactions);
+            //         if (!ret) {
+            //             logToClients(myClients, "Failed to disperse SOL", false);
+            //             for (let k = 0; k < myClients.length; k++)
+            //                 myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+            //             return;
+            //         }
+            //     }
+            // }
 
-//             logToClients(myClients, "Success", false);
-//             const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-//             for (let k = 0; k < myClients.length; k++) {
-//                 if (myClients[k].user.role === "admin")
-//                     myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-//                 else
-//                     myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
-//             }
-//         }
-//         catch (err) {
-//             logToClients(myClients, err, true);
-//             for (let k = 0; k < myClients.length; k++)
-//                 myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//         }
-//     }
-//     catch (err) {
-//         console.log(err);
-//         res.status(401).json({
-//             success: false,
-//             error: "Unknown error",
-//         });
-//     }
-// }
+            logToClients(myClients, "Success", false);
+            const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+            for (let k = 0; k < myClients.length; k++) {
+                if (myClients[k].user.role === "admin")
+                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                else
+                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+            }
+        }
+        catch (err) {
+            logToClients(myClients, err, true);
+            for (let k = 0; k < myClients.length; k++)
+                myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(401).json({
+            success: false,
+            error: "Unknown error",
+        });
+    }
+}
 
 exports.pumpfunDisperseSOLs = async (req, res) => {
     const { simulateData } = req.body;
@@ -5428,13 +4899,105 @@ exports.pumpfunDisperseSOLs = async (req, res) => {
             //         return;
             // }
 
-            logToClients(myClients, "Success", false);
-            const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-            for (let k = 0; k < myClients.length; k++) {
-                if (myClients[k].user.role === "admin")
-                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-                else
-                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+            if (addresses.length === 0) {
+                logToClients(myClients, "Success", false);
+                const projectForUsers = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                for (let k = 0; k < myClients.length; k++) {
+                    if (myClients[k].user.role === "admin")
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                    else
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUsers }));
+                }
+            } else {
+                const USE_JITO = true;
+                if (USE_JITO) {
+                    const jitoTip = req.user.presets.jitoTip;
+                    console.log("Jito Tip:", jitoTip);
+                    const zero = new BN(0);
+                    let bundleIndex = -1;
+                    let bundleItems = [];
+                    let index = 0;
+                    console.log("addresses:", addresses);
+
+                    while (index < addresses.length) {
+                        let count = addresses.length - index;
+                        if (count > 15) count = 15;
+                        let instructions = [];
+                        for (let i = index; i < index + count; i++) {
+                            const solAmount = new BN(amounts[i]);
+                            if (solAmount.gt(zero)) {
+                                instructions.push(
+                                    SystemProgram.transfer({
+                                        fromPubkey: zombieWallet.publicKey,
+                                        toPubkey: new PublicKey(addresses[i]),
+                                        lamports: Number(amounts[i])
+                                    })
+                                );
+                            }
+                        }
+                        if (instructions.length > 0) {
+                            console.log(`Transfer Instructions(${index}-${index + count - 1}):`, instructions.length);
+                            if (bundleItems[bundleIndex] && bundleItems[bundleIndex].length < 4) {
+                                bundleItems[bundleIndex].push({
+                                    instructions,
+                                    payer: zombieWallet.publicKey,
+                                    signers: [zombieWallet],
+                                });
+                            } else {
+                                bundleItems.push([{
+                                    instructions,
+                                    payer: zombieWallet.publicKey,
+                                    signers: [zombieWallet],
+                                }]);
+                                bundleIndex++;
+                            }
+                        }
+                        index += count;
+                    }
+
+                    let bundleTxns = [];
+                    const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+                    for (let i = 0; i < bundleItems.length; i++) {
+                        const bundleItem = bundleItems[i];
+                        let verTxns = [];
+                        for (let j = 0; j < bundleItem.length; j++) {
+                            if (j === bundleItem.length - 1) {
+                                bundleItem[j].instructions = [
+                                    CreateTraderAPITipInstruction(bundleItem[j].payer, jitoTip * LAMPORTS_PER_SOL),
+                                    ...bundleItem[j].instructions,
+                                ];
+                            }
+                            const transactionMessage = new TransactionMessage({
+                                payerKey: bundleItem[j].payer,
+                                instructions: bundleItem[j].instructions,
+                                recentBlockhash,
+                            });
+                            const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
+                            tx.sign(bundleItem[j].signers);
+                            verTxns.push(tx);
+                        }
+                        bundleTxns.push(verTxns);
+                    }
+
+                    const ret = await buildBundlesOnNB(bundleTxns);
+                    if (!ret) {
+                        logToClients(myClients, "Failed to disperse SOL", false);
+                        for (let k = 0; k < myClients.length; k++)
+                            myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                        return;
+                    }
+                    project.isTipPayed = true;
+                    project.save();
+                }
+
+                logToClients(myClients, "Success", false);
+                const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                for (let k = 0; k < myClients.length; k++) {
+                    if (myClients[k].user.role === "admin")
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                    else
+                        myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+                }
             }
         }
         catch (err) {
@@ -7477,1543 +7040,6 @@ exports.burnTaxToken = async (req, res) => {
     }
 }
 
-// exports.mintAndSnipePumpfunTokens = async (req, res) => {
-//     const { simulateData } = req.body;
-//     console.log("Buying tokens...", simulateData);
-//     try {
-//         const project = await Project.findById(simulateData.projectId);
-//         if (req.user.role === "admin" || project.userId !== req.user._id.toString() || project.status !== "OPEN") {
-//             console.log("Mismatched user id or Not activated project!");
-//             res.status(401).json({
-//                 success: false,
-//                 error: "User ID mismatch Or Not activated project",
-//             });
-//             return;
-//         }
-
-//         res.status(200).json({
-//             success: true
-//         });
-
-//         const clients = getWebSocketClientList();
-//         const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
-//         try {
-//             const { connection } = useConnection();
-
-//             const jitoTip = req.user.presets.jitoTip;
-//             console.log("Jito Tip:", jitoTip);
-
-//             let accounts = {};
-//             let walletTokenAccounts = {};
-//             for (let i = 0; i < simulateData.wallets.length; i++) {
-//                 if (!accounts[simulateData.wallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: simulateData.wallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", simulateData.wallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[simulateData.wallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (!accounts[project.teamWallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: project.teamWallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", project.teamWallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[project.teamWallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-
-//             for (let i = 0; i < project.extraWallets.length; i++) {
-//                 if (!accounts[project.extraWallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: project.extraWallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", project.extraWallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[project.extraWallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-//             // }
-
-//             let buyItems = [];
-//             for (let i = 0; i < simulateData.wallets.length; i++) {
-//                 if (simulateData.wallets[i].sim.buy.tokenAmount !== "") {
-//                     try {
-//                         walletTokenAccounts[simulateData.wallets[i].address] = await getWalletTokenAccount(connection, accounts[simulateData.wallets[i].address].publicKey);
-//                     }
-//                     catch (err) {
-//                         console.log(err);
-//                         logToClients(myClients, err, true);
-//                         for (let k = 0; k < myClients.length; k++)
-//                             myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                         return;
-//                     }
-
-//                     buyItems.push({
-//                         address: simulateData.wallets[i].address,
-//                         tokenAmount: simulateData.wallets[i].sim.buy.tokenAmount,
-//                         solAmount: simulateData.wallets[i].sim.buy.solAmount,
-//                     });
-//                 }
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (project.teamWallets[i].sim.buy.tokenAmount !== "") {
-//                     try {
-//                         walletTokenAccounts[project.teamWallets[i].address] = await getWalletTokenAccount(connection, accounts[project.teamWallets[i].address].publicKey);
-//                     }
-//                     catch (err) {
-//                         console.log(err);
-//                         logToClients(myClients, err, true);
-//                         for (let k = 0; k < myClients.length; k++)
-//                             myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                         return;
-//                     }
-
-//                     buyItems.push({
-//                         address: project.teamWallets[i].address,
-//                         tokenAmount: project.teamWallets[i].sim.buy.tokenAmount,
-//                         solAmount: project.teamWallets[i].sim.buy.solAmount,
-//                     });
-//                 }
-//             }
-//             // }
-
-//             console.log("accounts: ", accounts)
-//             console.log("walletTokenAccounts: ", walletTokenAccounts)
-//             console.log("Buy Items:", buyItems.length);
-
-
-//             logToClients(myClients, "1. Generating bundle transactions...", false);
-
-//             const signerKeypair = accounts[buyItems[0].address];
-
-//             const tokenMint = simulateData.token.address;
-//             const tokenName = project.token.name;
-//             const tokenSymbol = project.token.symbol;
-//             const tokenUri = project.token.tokenUri;
-
-//             const keyArray = JSON.parse(project.token.privateKey)
-//             const privkey = new Uint8Array(keyArray)
-//             const keypair = Keypair.fromSecretKey(privkey)
-
-//             const tokenAccount = getKeypairFromBs58(bs58.encode(keypair.secretKey))
-
-//             // Create an AnchorProvider instance
-//             const provider = new anchor.AnchorProvider(
-//                 connection,
-//                 new anchor.Wallet(signerKeypair),
-//                 anchor.AnchorProvider.defaultOptions()
-//             );
-
-//             const pumpSDK = new PumpSdk(connection);
-
-//             // const program = new anchor.Program(idl, programID, provider);
-//             const program = getPumpProgram(connection, new PublicKey(programID));
-
-//             // Create a Lookup Table
-//             let pumpPoolKeys = await getPumpPoolKeys(program, new PublicKey(tokenMint))
-//             let allPubKeys = [
-//                 new PublicKey(programID),
-//                 new PublicKey(MEMO_PROGRAM_ID),
-//                 new PublicKey(feeRecipient),
-//                 new PublicKey(EVENT_AUTH),
-//                 NATIVE_MINT,
-//                 TOKEN_PROGRAM_ID,
-//                 ASSOCIATED_TOKEN_PROGRAM_ID,
-//                 tokenAccount.publicKey,
-//                 SYSVAR_RENT_PUBKEY,
-//                 new PublicKey("ComputeBudget111111111111111111111111111111"),  // Compute Budget
-//                 new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"), // global state
-//                 new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
-//                 SystemProgram.programId
-//             ]
-//             allPubKeys = [...allPubKeys, ...pumpPoolKeys]
-
-//             const zombieWallet = await getZombieWallet(project);
-
-//             for (let idx = 0; idx < buyItems.length; idx++) {
-//                 const wallet = new PublicKey(buyItems[idx].address);
-//                 const tokenAccount = await getAssociatedTokenAddress(
-//                     new PublicKey(tokenMint),
-//                     wallet
-//                 );
-//                 const wrappedAccount = await getAssociatedTokenAddress(NATIVE_MINT, wallet);
-//                 allPubKeys.push(wallet);
-//                 allPubKeys.push(tokenAccount);
-//                 allPubKeys.push(wrappedAccount);
-//             }
-
-//             // const firstAddressLookup = await createAddressLookupWithAddressList(
-//             //     connection,
-//             //     allPubKeys,
-//             //     zombieWallet
-//             // );
-
-//             // if (!firstAddressLookup) return null;
-//             const firstAddressLookup = new PublicKey("Ej3wFtgk3WywPnWPD3aychk38MqTdrjtqXkzbK8FpUih")
-
-//             await sleep(5000);
-
-//             const lookupTableAccounts = [];
-
-//             const startTime = Date.now();
-//             const TIMEOUT = 30000;
-//             let lookupTableAccount = null;
-
-//             // while (Date.now() - startTime < TIMEOUT) {
-//             //     console.log("---- verifing lookup Table", firstAddressLookup)
-//             lookupTableAccount = (await connection.getAddressLookupTable(firstAddressLookup));
-
-//             //     if (lookupTableAccount.value && lookupTableAccount.value.state && lookupTableAccount.value.state.addresses.length >= allPubKeys.length) {
-//             //         console.log(`https://explorer.solana.com/address/${firstAddressLookup.toString()}/entries?cluster=mainnet`)
-//             //         break;
-//             //     }
-//             //     await sleep(1000)
-//             // }
-
-//             lookupTableAccounts.push(lookupTableAccount.value);
-
-//             if (!lookupTableAccounts || lookupTableAccounts[0] == null) {
-//                 logToClients(myClients, "Failed to register Address Lookup.", false);
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                 return false;
-//             }
-
-//             // Jito Configuration
-//             let innerTxns = [];
-//             let instructions = [];
-//             let zombieKeypairList = [];
-//             let instructionCount = 0;
-
-//             let verTxns = [];
-
-//             while (true) {
-//                 try {
-//                     const balance = await connection.getBalance(new PublicKey(buyItems[0].address));
-//                     if (balance > 1000000) break;
-//                     console.log(balance)
-//                 } catch (err) {
-//                     console.log(err)
-//                     await sleep(4000)
-//                 }
-//             }
-
-//             for (let i = 0; i < buyItems.length; i++) {
-//                 const zombieKeypair = accounts[buyItems[i].address];
-
-//                 const solBalance = await getSafeSolBalance(zombieKeypair.publicKey);
-//                 const maxSolCost = Number(solBalance) * 0.98 / LAMPORTS_PER_SOL;
-//                 const unitSlippage = 10 / 100;
-//                 const numberAmount = maxSolCost / (1 + unitSlippage);
-//                 const tokenAmount = buyItems[i].tokenAmount;
-
-//                 if (i === 0) {
-//                     // Mint Transaction
-//                     const txMint = await buildMintTx(
-//                         program,
-//                         zombieKeypair,
-//                         new PublicKey(tokenMint),
-//                         tokenName,
-//                         tokenSymbol,
-//                         tokenUri
-//                     );
-
-//                     //Buy Transaction
-//                     const txBuyDev = await buildMintBuyTx(
-//                         program,
-//                         connection,
-//                         zombieKeypair,
-//                         tokenMint,
-//                         numberAmount,
-//                         maxSolCost,
-//                         tokenAmount,
-//                         zombieKeypair.publicKey
-//                     );
-
-//                     instructions = [...txMint.instructions, ...txBuyDev.instructions];
-//                     zombieKeypairList = [signerKeypair, tokenAccount];
-//                     instructionCount += 3;
-
-//                     if (buyItems.length === 1) {
-//                         /* Add Tip Instruction */
-//                         let newInnerTransactions = [];
-//                         newInnerTransactions.push(
-//                             CreateTraderAPITipInstruction(accounts[buyItems[i].address].publicKey, LAMPORTS_PER_SOL * jitoTip)
-//                         )
-
-//                         instructions.push(...newInnerTransactions);
-
-//                         innerTxns.push({
-//                             txns: [...instructions],
-//                             signers: [...zombieKeypairList],
-//                             payer: signerKeypair,
-//                         });
-//                     }
-//                 }
-//                 else {
-//                     //Buy Transaction
-//                     const txBuyZombie = await buildMintBuyTx(
-//                         program,
-//                         connection,
-//                         zombieKeypair,
-//                         tokenMint.toString(),
-//                         numberAmount,
-//                         maxSolCost,
-//                         tokenAmount,
-//                         accounts[buyItems[0].address].publicKey,
-//                     );
-
-//                     if (i === buyItems.length - 1) {
-//                         /* Add Tip Instruction */
-//                         let newInnerTransactions = [...txBuyZombie.instructions];
-//                         // newInnerTransactions.push(
-//                         //     CreateTraderAPITipInstruction(accounts[buyItems[i].address].publicKey, LAMPORTS_PER_SOL * jitoTip)
-//                         // )
-
-//                         // add to instructions
-//                         instructions.push(...newInnerTransactions);
-//                         zombieKeypairList.push(zombieKeypair);
-
-//                         // add to innerTxns
-//                         innerTxns.push({
-//                             txns: [
-//                                 CreateTraderAPITipInstruction(accounts[buyItems[i].address].publicKey, LAMPORTS_PER_SOL * jitoTip),
-//                                 ...instructions
-//                             ],
-//                             signers: [...zombieKeypairList],
-//                             payer: zombieKeypairList[0],
-//                         });
-
-//                         instructions = [];
-//                         zombieKeypairList = [];
-//                         instructionCount = 0;
-//                     }
-//                     else {
-
-//                         // add to instructions
-//                         instructions.push(...txBuyZombie.instructions);
-//                         zombieKeypairList.push(zombieKeypair);
-//                         instructionCount++;
-
-//                         if (instructionCount >= process.env.INSTRUCTION_LIMIT) {
-//                             console.log("instructionCount", instructionCount)
-//                             innerTxns.push({
-//                                 txns: [...instructions],
-//                                 signers: [...zombieKeypairList],
-//                                 payer: zombieKeypairList[0],
-//                             });
-
-//                             instructions = [];
-//                             zombieKeypairList = [];
-//                             instructionCount = 0;
-//                         }
-//                     }
-//                 }
-//             }
-
-//             let extraInnerTxns = [];
-//             instructions = []
-//             zombieKeypairList = []
-//             console.log("-------Extra Wallets", project.extraWallets)
-//             for (let i = 0; i < project.extraWallets.length; i++) {
-//                 const zombieKeypair = accounts[project.extraWallets[i].address];
-//                 console.log(zombieKeypair)
-
-//                 const solBalance = await getSafeSolBalance(zombieKeypair.publicKey);
-//                 const maxSolCost = Number(solBalance) * 0.98 / LAMPORTS_PER_SOL - 0.02;
-//                 const unitSlippage = 10 / 100;
-//                 const numberAmount = maxSolCost / (1 + unitSlippage);
-//                 const tokenAmount = project.extraWallets[i].sim.buy.tokenAmount;
-//                 const solRequired = Number(project.extraWallets[i].sim.buy.solAmount) / LAMPORTS_PER_SOL;
-
-//                 if (maxSolCost < solRequired) continue;
-
-//                 const txBuyZombie = await buildMintBuyTx(
-//                     program,
-//                     connection,
-//                     zombieKeypair,
-//                     tokenMint.toString(),
-//                     numberAmount,
-//                     maxSolCost,
-//                     tokenAmount,
-//                     accounts[buyItems[0].address].publicKey
-//                 );
-
-//                 let newInnerTransactions = [...txBuyZombie.instructions];
-//                 instructions.push(...newInnerTransactions);
-//                 zombieKeypairList.push(zombieKeypair);
-//             }
-
-//             if (zombieKeypairList.length > 0) {
-//                 extraInnerTxns.push({
-//                     txns: [...instructions],
-//                     signers: [...zombieKeypairList],
-//                     payer: zombieKeypairList[0],
-//                 });
-//             }
-
-//             logToClients(myClients, "2. Submitting bundle transactions...", false);
-
-//             console.log("Sending compressed trxs")
-
-//             const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-//             for (let i = 0; i < innerTxns.length; i++) {
-//                 verTxns.push(makeVerTxWithLUT(lookupTableAccounts[0], [...innerTxns[i].txns], recentBlockhash, [...innerTxns[i].signers], innerTxns[i].payer))
-//             }
-
-//             try {
-//                 for (let i = 0; i < extraInnerTxns.length; i++) {
-//                     verTxns.push(makeVerTxWithLUT(lookupTableAccounts[0], [...extraInnerTxns[i].txns], recentBlockhash, [...extraInnerTxns[i].signers], extraInnerTxns[i].payer))
-//                 }
-//             } catch (error) {
-//                 console.log(error);
-//             }
-
-//             const ret = await buildBundleOnNBAndConfirmTxId(connection, verTxns, "finalized");
-
-//             if (!ret) {
-//                 console.log("Failed to buy tokens!");
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                 return;
-//             }
-
-//             const curPumpKeyPair = await PumpKeyPair.findOne({ publicKey: { $eq: tokenMint } });
-//             if (curPumpKeyPair && !curPumpKeyPair.isUsed) {
-//                 curPumpKeyPair.isUsed = true;
-//                 await curPumpKeyPair.save();
-//             }
-
-//             logToClients(myClients, "3. Transferring tokens...", false);
-
-//             const wallets = project.wallets.filter(item => item.sim.enabled);
-//             const mint = new PublicKey(project.token.address);
-
-//             let xferItemsByFrom = {};
-//             if (PAYMENT_OPTIONS[project.paymentId].token > 0) {
-//                 if (buyItems.length >= 2)
-//                     xferItemsByFrom[buyItems[1].address] = [
-//                         {
-//                             from: buyItems[1].address,
-//                             to: getTaxWallet(),
-//                             tokenAmount: 10000000 * PAYMENT_OPTIONS[project.paymentId].token
-//                         }
-//                     ]
-//                 else
-//                     xferItemsByFrom[buyItems[0].address] = [
-//                         {
-//                             from: buyItems[0].address,
-//                             to: getTaxWallet(),
-//                             tokenAmount: 10000000 * PAYMENT_OPTIONS[project.paymentId].token
-//                         }
-//                     ]
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (project.teamWallets[i].sim.xfer.fromAddress === project.teamWallets[i].address)
-//                     continue;
-
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, accounts[project.teamWallets[i].address].publicKey);
-
-//                 let tokenBalance = null;
-//                 try {
-//                     const tokenAccountInfo = await getAccount(connection, associatedToken);
-//                     tokenBalance = new BN(tokenAccountInfo.amount);
-//                 }
-//                 catch (err) {
-//                     console.log(err);
-//                 }
-
-//                 if (!tokenBalance || tokenBalance.lt(new BN(project.teamWallets[i].sim.xfer.tokenAmount))) {
-//                     if (xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress]) {
-//                         xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress] = [
-//                             ...xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress],
-//                             {
-//                                 from: project.teamWallets[i].sim.xfer.fromAddress,
-//                                 to: project.teamWallets[i].address,
-//                                 tokenAmount: project.teamWallets[i].sim.xfer.tokenAmount,
-//                             }
-//                         ];
-//                     }
-//                     else {
-//                         xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress] = [
-//                             {
-//                                 from: project.teamWallets[i].sim.xfer.fromAddress,
-//                                 to: project.teamWallets[i].address,
-//                                 tokenAmount: project.teamWallets[i].sim.xfer.tokenAmount,
-//                             }
-//                         ];
-//                     }
-//                 }
-//             }
-//             // }
-
-//             for (let i = 0; i < wallets.length; i++) {
-//                 if (wallets[i].address === wallets[i].sim.xfer.fromAddress)
-//                     continue;
-
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, accounts[wallets[i].address].publicKey);
-
-
-
-//                 let tokenBalance = null;
-//                 try {
-//                     const tokenAccountInfo = await getAccount(connection, associatedToken);
-//                     tokenBalance = new BN(tokenAccountInfo.amount);
-//                 }
-//                 catch (err) {
-//                     // console.log(err);
-//                 }
-
-//                 if (!tokenBalance || tokenBalance.lt(new BN(wallets[i].sim.xfer.tokenAmount))) {
-//                     if (xferItemsByFrom[wallets[i].sim.xfer.fromAddress]) {
-//                         xferItemsByFrom[wallets[i].sim.xfer.fromAddress] = [
-//                             ...xferItemsByFrom[wallets[i].sim.xfer.fromAddress],
-//                             {
-//                                 from: wallets[i].sim.xfer.fromAddress,
-//                                 to: wallets[i].address,
-//                                 tokenAmount: wallets[i].sim.xfer.tokenAmount,
-//                             },
-//                         ];
-//                     }
-//                     else {
-//                         xferItemsByFrom[wallets[i].sim.xfer.fromAddress] = [
-//                             {
-//                                 from: wallets[i].sim.xfer.fromAddress,
-//                                 to: wallets[i].address,
-//                                 tokenAmount: wallets[i].sim.xfer.tokenAmount,
-//                             },
-//                         ];
-//                     }
-//                 }
-//             }
-
-//             console.log("xferItemsByFrom: ", xferItemsByFrom)
-
-//             let dispersed = true;
-//             const USE_JITO = true;
-//             if (USE_JITO) {
-//                 let bundleItems = [];
-//                 let bundleIndex = -1;
-//                 for (let from in xferItemsByFrom) {
-//                     const signers = [accounts[from]];
-//                     let xferItems = xferItemsByFrom[from];
-//                     let index = 0;
-//                     while (index < xferItems.length) {
-//                         let count = 0;
-//                         let instructions = [];
-//                         for (let i = index; i < xferItems.length; i++) {
-//                             const fromTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].from].publicKey);
-//                             if (!fromTokenAccount)
-//                                 continue;
-
-//                             const toTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].to]?.publicKey ? accounts[xferItems[i].to]?.publicKey : new PublicKey(xferItems[i].to));
-//                             try {
-//                                 await sleep(20);
-//                                 const info = await connection.getAccountInfo(toTokenAccount);
-//                                 if (!info) {
-//                                     instructions.push(
-//                                         createAssociatedTokenAccountInstruction(
-//                                             accounts[from].publicKey,
-//                                             toTokenAccount,
-//                                             accounts[xferItems[i].to]?.publicKey ? accounts[xferItems[i].to]?.publicKey : new PublicKey(xferItems[i].to),
-//                                             mint
-//                                         )
-//                                     );
-//                                 }
-//                             }
-//                             catch (err) {
-//                                 console.log(err);
-//                             }
-
-//                             instructions.push(
-//                                 createTransferInstruction(
-//                                     fromTokenAccount,
-//                                     toTokenAccount,
-//                                     accounts[xferItems[i].from].publicKey,
-//                                     xferItems[i].tokenAmount * Math.pow(10, Number(project.token.decimals))
-//                                 )
-//                             );
-
-//                             count++;
-//                             if (count === 5)
-//                                 break;
-//                         }
-
-//                         if (instructions.length > 0) {
-//                             console.log("Transferring tokens...", from, index, index + count - 1);
-//                             if (bundleItems[bundleIndex] && bundleItems[bundleIndex].length < BUNDLE_TX_LIMIT) {
-//                                 bundleItems[bundleIndex].push({
-//                                     instructions: instructions,
-//                                     signers: signers,
-//                                     payer: accounts[from].publicKey,
-//                                 });
-//                             }
-//                             else {
-//                                 bundleItems.push([
-//                                     {
-//                                         instructions: instructions,
-//                                         signers: signers,
-//                                         payer: accounts[from].publicKey,
-//                                     }
-//                                 ]);
-//                                 bundleIndex++;
-//                             }
-//                         }
-//                         else
-//                             break;
-
-//                         index += count;
-//                     }
-//                 }
-
-//                 console.log("Bundle Items:", bundleItems.length);
-//                 let bundleTxns = [];
-//                 const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-//                 for (let i = 0; i < bundleItems.length; i++) {
-//                     let bundleItem = bundleItems[i];
-//                     console.log("Bundle", i, bundleItem.length);
-//                     let verTxns = [];
-//                     for (let j = 0; j < bundleItem.length; j++) {
-//                         if (j === bundleItem.length - 1) {
-//                             bundleItem[j].instructions = [
-//                                 CreateTraderAPITipInstruction(bundleItem[j].payer, LAMPORTS_PER_SOL * jitoTip),
-//                                 ...bundleItem[j].instructions
-//                             ];
-//                         }
-//                         const transactionMessage = new TransactionMessage({
-//                             payerKey: bundleItem[j].payer,
-//                             instructions: bundleItem[j].instructions,
-//                             recentBlockhash,
-//                         });
-//                         const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
-//                         tx.sign(bundleItem[j].signers);
-//                         verTxns.push(tx);
-//                     }
-
-//                     bundleTxns.push(verTxns);
-//                 }
-
-//                 const ret = await buildBundlesOnNB(bundleTxns);
-//                 if (!ret) {
-//                     console.log("Failed to transfer tokens");
-//                     dispersed = false;
-//                 }
-//             }
-//             else {
-//                 let transactions = [];
-//                 for (let from in xferItemsByFrom) {
-//                     const signers = [accounts[from]];
-//                     let xferItems = xferItemsByFrom[from];
-//                     let index = 0;
-//                     while (index < xferItems.length) {
-//                         let count = 0;
-//                         const tx = new Transaction();
-//                         for (let i = index; i < xferItems.length; i++) {
-//                             const fromTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].from].publicKey);
-//                             if (!fromTokenAccount)
-//                                 continue;
-
-//                             const toTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].to].publicKey);
-//                             try {
-//                                 const info = await connection.getAccountInfo(toTokenAccount);
-//                                 if (!info) {
-//                                     tx.add(
-//                                         createAssociatedTokenAccountInstruction(
-//                                             accounts[from].publicKey,
-//                                             toTokenAccount,
-//                                             accounts[xferItems[i].to].publicKey,
-//                                             mint
-//                                         )
-//                                     );
-//                                 }
-//                             }
-//                             catch (err) {
-//                                 console.log(err);
-//                             }
-
-//                             tx.add(
-//                                 createTransferInstruction(
-//                                     fromTokenAccount,
-//                                     toTokenAccount,
-//                                     accounts[xferItems[i].from].publicKey,
-//                                     xferItems[i].tokenAmount * Math.pow(10, Number(project.token.decimals))
-//                                 )
-//                             );
-
-//                             count++;
-//                             if (count === 5)
-//                                 break;
-//                         }
-
-//                         if (tx.instructions.length > 0) {
-//                             console.log("Transferring tokens...", from, index, index + count - 1);
-//                             transactions = [
-//                                 ...transactions,
-//                                 {
-//                                     transaction: tx,
-//                                     signers: signers,
-//                                 }
-//                             ];
-//                         }
-//                         else
-//                             break;
-
-//                         index += count;
-//                     }
-//                 }
-
-//                 if (transactions.length > 0) {
-//                     const ret = await sendAndConfirmLegacyTransactions(connection, transactions);
-//                     if (!ret) {
-//                         console.log("Failed to transfer tokens");
-//                         dispersed = false;
-//                     }
-//                 }
-//             }
-
-//             console.log("Success");
-//             project.status = "TRADE";
-//             await project.save();
-
-//             const html = `<p>Name: ${project.name}</p><p>Token: ${project.token.address}</p>`;
-//             const mails = await Email.find();
-//             let pendings = [];
-//             for (let i = 0; i < mails.length; i++) {
-//                 pendings = [
-//                     ...pendings,
-//                     sendEmail({
-//                         to: mails[i].email,
-//                         subject: process.env.SUBJECT_FOR_LAUNCH_TOKEN,
-//                         html: html
-//                     }, async (err, data) => {
-//                         if (err || data.startsWith("Error")) {
-//                             console.log(err);
-//                             return;
-//                         }
-
-//                         console.log('Mail sent successfully with data: ' + data);
-//                     })
-//                 ];
-//             }
-
-//             // startMetric(project._id.toString());
-//             const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-//             for (let k = 0; k < myClients.length; k++) {
-//                 if (myClients[k].user.role === "admin")
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-//                 else
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
-//             }
-//         }
-//         catch (err) {
-//             logToClients(myClients, err, true);
-//             for (let k = 0; k < myClients.length; k++)
-//                 myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//         }
-//     }
-//     catch (err) {
-//         console.log(err);
-//         res.status(401).json({
-//             success: false,
-//             error: "Unknown error",
-//         });
-//     }
-// }
-
-// exports.mintAndBuyPumpfunTokens = async (req, res) => {
-//     const { simulateData } = req.body;
-//     console.log("Mint & Buying tokens...", simulateData);
-//     try {
-//         const project = await Project.findById(simulateData.projectId);
-//         if ((req.user.role !== "admin" && project.userId !== req.user._id.toString()) || project.status !== "OPEN") {
-//             console.log("Mismatched user id or Not activated project!");
-//             res.status(401).json({
-//                 success: false,
-//                 error: "User ID mismatch Or Not activated project",
-//             });
-//             return;
-//         }
-
-//         res.status(200).json({
-//             success: true
-//         });
-
-//         const clients = getWebSocketClientList();
-//         const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
-//         try {
-//             const { connection } = useConnection();
-
-//             const jitoTip = req.user.presets.jitoTip;
-//             console.log("Jito Tip:", jitoTip);
-
-//             let accounts = {};
-//             let walletTokenAccounts = {};
-//             for (let i = 0; i < simulateData.wallets.length; i++) {
-//                 if (!accounts[simulateData.wallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: simulateData.wallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", simulateData.wallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[simulateData.wallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (!accounts[project.teamWallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: project.teamWallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", project.teamWallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[project.teamWallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-
-//             for (let i = 0; i < project.extraWallets.length; i++) {
-//                 if (!accounts[project.extraWallets[i].address]) {
-//                     const walletItem = await Wallet.findOne({ address: project.extraWallets[i].address });
-//                     if (!walletItem) {
-//                         console.log("Invalid wallet:", project.extraWallets[i].address);
-//                         continue;
-//                     }
-//                     accounts[project.extraWallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
-//                 }
-//             }
-
-//             let buyItems = [];
-//             for (let i = 0; i < simulateData.wallets.length; i++) {
-//                 if (simulateData.wallets[i].sim.buy.tokenAmount !== "" && simulateData.wallets[i].sim.buy.tokenAmount !== "0") {
-//                     try {
-//                         walletTokenAccounts[simulateData.wallets[i].address] = await getWalletTokenAccount(connection, accounts[simulateData.wallets[i].address].publicKey);
-//                     }
-//                     catch (err) {
-//                         console.log(err);
-//                         logToClients(myClients, err, true);
-//                         for (let k = 0; k < myClients.length; k++)
-//                             myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                         return;
-//                     }
-
-//                     if (buyItems.length == 0) {
-//                         buyItems.push({
-//                             address: simulateData.wallets[i].address,
-//                             tokenAmount: simulateData.wallets[i].sim.buy.tokenAmount,
-//                             initialTokenAmount: simulateData.wallets[i].initialTokenAmount,
-//                             solAmount: simulateData.wallets[i].sim.buy.solAmount,
-//                         });
-//                     } else {
-//                         buyItems.push({
-//                             address: simulateData.wallets[i].address,
-//                             tokenAmount: simulateData.wallets[i].sim.buy.tokenAmount,
-//                             solAmount: simulateData.wallets[i].sim.buy.solAmount,
-//                         });
-//                     }
-//                 }
-//             }
-
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (project.teamWallets[i].sim.buy.tokenAmount !== "" && project.teamWallets[i].sim.buy.tokenAmount !== "0") {
-//                     try {
-//                         walletTokenAccounts[project.teamWallets[i].address] = await getWalletTokenAccount(connection, accounts[project.teamWallets[i].address].publicKey);
-//                     }
-//                     catch (err) {
-//                         console.log(err);
-//                         logToClients(myClients, err, true);
-//                         for (let k = 0; k < myClients.length; k++)
-//                             myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                         return;
-//                     }
-
-//                     buyItems.push({
-//                         address: project.teamWallets[i].address,
-//                         tokenAmount: project.teamWallets[i].sim.buy.tokenAmount,
-//                         solAmount: project.teamWallets[i].sim.buy.solAmount,
-//                     });
-//                 }
-//             }
-
-//             console.log("accounts: ", accounts)
-//             console.log("walletTokenAccounts: ", walletTokenAccounts)
-//             console.log("Buy Items:", buyItems.length);
-
-
-//             logToClients(myClients, "1. Generating bundle transactions...", false);
-
-//             const signerKeypair = accounts[buyItems[0].address];
-
-//             const tokenMint = simulateData.token.address;
-//             const tokenName = project.token.name;
-//             const tokenSymbol = project.token.symbol;
-//             const tokenUri = project.token.tokenUri;
-
-//             const keyArray = JSON.parse(project.token.privateKey)
-//             const privkey = new Uint8Array(keyArray)
-//             const keypair = Keypair.fromSecretKey(privkey)
-
-//             const tokenAccount = getKeypairFromBs58(bs58.encode(keypair.secretKey))
-
-//             // Create an AnchorProvider instance
-//             const provider = new anchor.AnchorProvider(
-//                 connection,
-//                 new anchor.Wallet(signerKeypair),
-//                 anchor.AnchorProvider.defaultOptions()
-//             );
-
-//             // const program = new anchor.Program(idl, programID, provider);
-//             const program = getPumpProgram(connection, new PublicKey(programID));
-
-//             // Create a Lookup Table
-//             // let pumpPoolKeys = await getPumpPoolKeys(program, new PublicKey(tokenMint))
-//             // let allPubKeys = [
-//             //     new PublicKey(programID),
-//             //     new PublicKey(MEMO_PROGRAM_ID),
-//             //     new PublicKey(feeRecipient),
-//             //     new PublicKey(EVENT_AUTH),
-//             //     NATIVE_MINT,
-//             //     TOKEN_PROGRAM_ID,
-//             //     ASSOCIATED_TOKEN_PROGRAM_ID,
-//             //     tokenAccount.publicKey,
-//             //     SYSVAR_RENT_PUBKEY,
-//             //     new PublicKey("ComputeBudget111111111111111111111111111111"),  // Compute Budget
-//             //     new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"), // global state
-//             //     new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
-//             //     SystemProgram.programId
-//             // ]
-//             // allPubKeys = [...allPubKeys, ...pumpPoolKeys]
-
-//             // const zombieWallet = await getZombieWallet(project);
-
-//             // for (let idx = 0; idx < buyItems.length; idx++) {
-//             //     const wallet = new PublicKey(buyItems[idx].address);
-//             //     const tokenAccount = await getAssociatedTokenAddress(
-//             //         new PublicKey(tokenMint),
-//             //         wallet
-//             //     );
-//             //     const wrappedAccount = await getAssociatedTokenAddress(NATIVE_MINT, wallet);
-//             //     allPubKeys.push(wallet);
-//             //     allPubKeys.push(tokenAccount);
-//             //     allPubKeys.push(wrappedAccount);
-//             // }
-
-//             // const firstAddressLookup = await createAddressLookupWithAddressList(
-//             //     connection,
-//             //     allPubKeys,
-//             //     zombieWallet
-//             // );
-
-//             // if (!firstAddressLookup) return null;
-//             const firstAddressLookup = new PublicKey("Ej3wFtgk3WywPnWPD3aychk38MqTdrjtqXkzbK8FpUih")
-
-//             await sleep(5000);
-
-//             const lookupTableAccounts = [];
-
-//             // const startTime = Date.now();
-//             // const TIMEOUT = 30000;
-//             let lookupTableAccount = null;
-
-//             // while (Date.now() - startTime < TIMEOUT) {
-//             //     console.log("---- verifing lookup Table", firstAddressLookup)
-//             lookupTableAccount = (await connection.getAddressLookupTable(firstAddressLookup));
-
-//             //     if (lookupTableAccount.value && lookupTableAccount.value.state && lookupTableAccount.value.state.addresses.length >= allPubKeys.length) {
-//             //         console.log(`https://explorer.solana.com/address/${firstAddressLookup.toString()}/entries?cluster=mainnet`)
-//             //         break;
-//             //     }
-//             //     await sleep(1000)
-//             // }
-
-//             lookupTableAccounts.push(lookupTableAccount.value);
-
-//             if (!lookupTableAccounts || lookupTableAccounts[0] == null) {
-//                 logToClients(myClients, "Failed to register Address Lookup.", false);
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                 return false;
-//             }
-
-//             // Jito Configuration
-//             let mintTx;
-
-//             let innerTxns = [];
-//             let instructions = [];
-//             let zombieKeypairList = [];
-//             let instructionCount = 0;
-
-//             for (let i = 0; i < buyItems.length; i++) {
-//                 const zombieKeypair = accounts[buyItems[i].address];
-
-//                 const solBalance = await getSafeSolBalance(zombieKeypair.publicKey);
-//                 const maxSolCost = Number(solBalance) * 0.98 / LAMPORTS_PER_SOL;
-//                 const unitSlippage = 10 / 100;
-//                 const numberAmount = maxSolCost / (1 + unitSlippage);
-//                 const tokenAmount = buyItems[i].tokenAmount;
-//                 const solAmount = Math.ceil(Number(buyItems[i].solAmount) * 100 / 99) / LAMPORTS_PER_SOL;
-
-//                 if (i == 0) {
-//                     const token_metadata = {
-//                         'name': tokenName,
-//                         'symbol': tokenSymbol,
-//                         'uri': tokenUri
-//                     }
-
-//                     const response = await fetch("https://pumpportal.fun/api/trade-local", {
-//                         method: "POST",
-//                         headers: {
-//                             "Content-Type": "application/json",
-//                         },
-//                         body: JSON.stringify({
-//                             'publicKey': signerKeypair.publicKey.toString(),
-//                             'action': 'create',
-//                             'tokenMetadata': token_metadata,
-//                             'mint': tokenAccount.publicKey.toString(),
-//                             'denominatedInSol': 'false',
-//                             'amount': tokenAmount,
-//                             'slippage': 10,
-//                             'priorityFee': 0.0005,
-//                             'pool': 'pump'
-//                         }),
-//                     })
-
-//                     const data = await response.arrayBuffer();
-//                     mintTx = VersionedTransaction.deserialize(new Uint8Array(data));
-//                     mintTx.message.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-//                     mintTx.sign([signerKeypair, tokenAccount])
-//                 }
-
-//                 // if (i === 0) {
-//                 //     if (tokenAmount - buyItems[0].initialTokenAmount == 0) continue;
-
-//                 //     const txBuyDev = await buildMintBuyTx(
-//                 //         program,
-//                 //         signerKeypair,
-//                 //         tokenMint,
-//                 //         numberAmount,
-//                 //         maxSolCost,
-//                 //         tokenAmount - buyItems[0].initialTokenAmount
-//                 //     );
-
-//                 //     instructions = [...txBuyDev.instructions];
-//                 //     zombieKeypairList = [signerKeypair, tokenAccount];
-//                 //     instructionCount++;
-
-//                 //     if (buyItems.length === 1) {
-//                 //         /* Add Tip Instruction */
-//                 //         let newInnerTransactions = [];
-//                 //         newInnerTransactions.push(
-//                 //             SystemProgram.transfer({
-//                 //                 fromPubkey: accounts[buyItems[i].address].publicKey,
-//                 //                 toPubkey: tipAccount,
-//                 //                 lamports: LAMPORTS_PER_SOL * jitoTip,
-//                 //             })
-//                 //         )
-
-//                 //         innerTxns.push({
-//                 //             txns: newInnerTransactions,
-//                 //             signers: [signerKeypair],
-//                 //             payer: signerKeypair,
-//                 //         });
-//                 //     }
-//                 // }
-//                 else {
-//                     //Buy Transaction
-//                     const txBuyZombie = await buildMintBuyTx(
-//                         program,
-//                         connection,
-//                         zombieKeypair,
-//                         tokenMint.toString(),
-//                         numberAmount,
-//                         solAmount,
-//                         tokenAmount,
-//                         accounts[buyItems[0].address].publicKey
-//                     );
-
-//                     if (i === buyItems.length - 1) {
-//                         /* Add Tip Instruction */
-//                         let newInnerTransactions = [...txBuyZombie.instructions];
-//                         newInnerTransactions.push(
-//                             CreateTraderAPITipInstruction(accounts[buyItems[i].address].publicKey, LAMPORTS_PER_SOL * jitoTip)
-//                         )
-
-//                         // add to instructions
-//                         instructions.push(...newInnerTransactions);
-//                         zombieKeypairList.push(zombieKeypair);
-
-//                         // add to innerTxns
-//                         innerTxns.push({
-//                             txns: [...instructions],
-//                             signers: [...zombieKeypairList],
-//                             payer: zombieKeypairList[0],
-//                         });
-
-//                         instructions = [];
-//                         zombieKeypairList = [];
-//                         instructionCount = 0;
-//                     }
-//                     else {
-
-//                         // add to instructions
-//                         instructions.push(...txBuyZombie.instructions);
-//                         zombieKeypairList.push(zombieKeypair);
-//                         instructionCount++;
-
-//                         if (instructionCount >= process.env.INSTRUCTION_LIMIT) {
-//                             innerTxns.push({
-//                                 txns: [...instructions],
-//                                 signers: [...zombieKeypairList],
-//                                 payer: zombieKeypairList[0],
-//                             });
-
-//                             instructions = [];
-//                             zombieKeypairList = [];
-//                             instructionCount = 0;
-//                         }
-//                     }
-//                 }
-//             }
-
-//             let extraInnerTxns = [];
-//             instructions = []
-//             zombieKeypairList = []
-//             console.log("-------Extra Wallets", project.extraWallets)
-//             for (let i = 0; i < project.extraWallets.length; i++) {
-//                 const zombieKeypair = accounts[project.extraWallets[i].address];
-//                 console.log(zombieKeypair)
-
-//                 const solBalance = await getSafeSolBalance(zombieKeypair.publicKey);
-//                 const maxSolCost = Number(solBalance) * 0.98 / LAMPORTS_PER_SOL - 0.02;
-//                 const unitSlippage = 10 / 100;
-//                 const numberAmount = maxSolCost / (1 + unitSlippage);
-//                 const tokenAmount = project.extraWallets[i].sim.buy.tokenAmount;
-//                 const solRequired = Number(project.extraWallets[i].sim.buy.solAmount) / LAMPORTS_PER_SOL;
-
-//                 if (maxSolCost < solRequired) continue;
-
-//                 const txBuyZombie = await buildMintBuyTx(
-//                     program,
-//                     connection,
-//                     zombieKeypair,
-//                     tokenMint.toString(),
-//                     numberAmount,
-//                     maxSolCost,
-//                     tokenAmount,
-//                     accounts[buyItems[0].address].publicKey
-//                 );
-
-//                 let newInnerTransactions = [...txBuyZombie.instructions];
-//                 instructions.push(...newInnerTransactions);
-//                 zombieKeypairList.push(zombieKeypair);
-//             }
-
-//             if (zombieKeypairList.length > 0) {
-//                 extraInnerTxns.push({
-//                     txns: [...instructions],
-//                     signers: [...zombieKeypairList],
-//                     payer: zombieKeypairList[0],
-//                 });
-//             }
-
-//             let verTxns = [];
-
-//             logToClients(myClients, "2. Submitting bundle transactions...", false);
-
-//             console.log("Sending compressed trxs")
-
-//             const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-//             for (let i = 0; i < innerTxns.length; i++) {
-//                 verTxns.push(makeVerTxWithLUT(lookupTableAccounts[0], [...innerTxns[i].txns], recentBlockhash, [...innerTxns[i].signers], innerTxns[i].payer))
-//             }
-
-//             try {
-//                 for (let i = 0; i < extraInnerTxns.length; i++) {
-//                     verTxns.push(makeVerTxWithLUT(lookupTableAccounts[0], [...extraInnerTxns[i].txns], recentBlockhash, [...extraInnerTxns[i].signers], extraInnerTxns[i].payer))
-//                 }
-//             } catch (error) {
-//                 console.log(error);
-//             }
-
-//             // verTxns.forEach(async tx => {
-//             //     let sim = await connection.simulateTransaction(tx)
-//             //     console.log("--------------- simulattion:\n", sim)
-//             // });
-
-//             let ret;
-//             if (await buildTxOnNB(mintTx, signerKeypair, jitoTip)) {
-//                 isMintSuccess = true;
-
-//                 // Disable used PumpKeyPair
-//                 const curPumpKeyPair = await PumpKeyPair.findOne({ publicKey: { $eq: tokenMint } });
-//                 if (curPumpKeyPair && !curPumpKeyPair.isUsed) {
-//                     curPumpKeyPair.isUsed = true;
-//                     await curPumpKeyPair.save();
-//                 }
-
-//                 console.log("------ Mint Success! -------")
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("MINT_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-
-//                 return;
-
-//                 ret = await buildBundleOnNB(verTxns);
-//             }
-
-//             if (!ret) {
-//                 console.log("Failed to buy tokens!");
-//                 for (let k = 0; k < myClients.length; k++)
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//                 return;
-//             }
-
-//             logToClients(myClients, "3. Transferring tokens...", false);
-
-//             const wallets = project.wallets.filter(item => item.sim.enabled);
-//             const mint = new PublicKey(project.token.address);
-
-//             let xferItemsByFrom = {};
-//             if (PAYMENT_OPTIONS[project.paymentId].token > 0) {
-//                 if (buyItems.length >= 2)
-//                     xferItemsByFrom[buyItems[1].address] = [
-//                         {
-//                             from: buyItems[1].address,
-//                             to: getTaxWallet(),
-//                             tokenAmount: 10000000 * PAYMENT_OPTIONS[project.paymentId].token
-//                         }
-//                     ]
-//                 else
-//                     xferItemsByFrom[buyItems[0].address] = [
-//                         {
-//                             from: buyItems[0].address,
-//                             to: getTaxWallet(),
-//                             tokenAmount: 10000000 * PAYMENT_OPTIONS[project.paymentId].token
-//                         }
-//                     ]
-//             }
-
-//             // if (project.paymentId != 1) {
-//             for (let i = 0; i < project.teamWallets.length; i++) {
-//                 if (project.teamWallets[i].sim.xfer.fromAddress === project.teamWallets[i].address)
-//                     continue;
-
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, accounts[project.teamWallets[i].address].publicKey);
-
-//                 let tokenBalance = null;
-//                 try {
-//                     const tokenAccountInfo = await getAccount(connection, associatedToken);
-//                     tokenBalance = new BN(tokenAccountInfo.amount);
-//                 }
-//                 catch (err) {
-//                     console.log(err);
-//                 }
-
-//                 if (!tokenBalance || tokenBalance.lt(new BN(project.teamWallets[i].sim.xfer.tokenAmount))) {
-//                     if (xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress]) {
-//                         xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress] = [
-//                             ...xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress],
-//                             {
-//                                 from: project.teamWallets[i].sim.xfer.fromAddress,
-//                                 to: project.teamWallets[i].address,
-//                                 tokenAmount: project.teamWallets[i].sim.xfer.tokenAmount,
-//                             }
-//                         ];
-//                     }
-//                     else {
-//                         xferItemsByFrom[project.teamWallets[i].sim.xfer.fromAddress] = [
-//                             {
-//                                 from: project.teamWallets[i].sim.xfer.fromAddress,
-//                                 to: project.teamWallets[i].address,
-//                                 tokenAmount: project.teamWallets[i].sim.xfer.tokenAmount,
-//                             }
-//                         ];
-//                     }
-//                 }
-//             }
-//             // }
-
-//             for (let i = 0; i < wallets.length; i++) {
-//                 if (wallets[i].address === wallets[i].sim.xfer.fromAddress)
-//                     continue;
-
-//                 const associatedToken = getAssociatedTokenAddressSync(mint, accounts[wallets[i].address].publicKey);
-
-
-
-//                 let tokenBalance = null;
-//                 try {
-//                     const tokenAccountInfo = await getAccount(connection, associatedToken);
-//                     tokenBalance = new BN(tokenAccountInfo.amount);
-//                 }
-//                 catch (err) {
-//                     console.log(err);
-//                 }
-
-//                 if (!tokenBalance || tokenBalance.lt(new BN(wallets[i].sim.xfer.tokenAmount))) {
-//                     if (xferItemsByFrom[wallets[i].sim.xfer.fromAddress]) {
-//                         xferItemsByFrom[wallets[i].sim.xfer.fromAddress] = [
-//                             ...xferItemsByFrom[wallets[i].sim.xfer.fromAddress],
-//                             {
-//                                 from: wallets[i].sim.xfer.fromAddress,
-//                                 to: wallets[i].address,
-//                                 tokenAmount: wallets[i].sim.xfer.tokenAmount,
-//                             },
-//                         ];
-//                     }
-//                     else {
-//                         xferItemsByFrom[wallets[i].sim.xfer.fromAddress] = [
-//                             {
-//                                 from: wallets[i].sim.xfer.fromAddress,
-//                                 to: wallets[i].address,
-//                                 tokenAmount: wallets[i].sim.xfer.tokenAmount,
-//                             },
-//                         ];
-//                     }
-//                 }
-//             }
-
-//             console.log("xferItemsByFrom: ", xferItemsByFrom)
-
-//             let dispersed = true;
-//             const USE_JITO = true;
-//             if (USE_JITO) {
-//                 let bundleItems = [];
-//                 let bundleIndex = -1;
-//                 for (let from in xferItemsByFrom) {
-//                     const signers = [accounts[from]];
-//                     let xferItems = xferItemsByFrom[from];
-//                     let index = 0;
-//                     while (index < xferItems.length) {
-//                         let count = 0;
-//                         let instructions = [];
-//                         for (let i = index; i < xferItems.length; i++) {
-//                             const fromTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].from].publicKey);
-//                             if (!fromTokenAccount)
-//                                 continue;
-
-//                             const toTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].to]?.publicKey ? accounts[xferItems[i].to]?.publicKey : new PublicKey(xferItems[i].to));
-//                             try {
-//                                 const info = await connection.getAccountInfo(toTokenAccount);
-//                                 if (!info) {
-//                                     instructions.push(
-//                                         createAssociatedTokenAccountInstruction(
-//                                             accounts[from].publicKey,
-//                                             toTokenAccount,
-//                                             accounts[xferItems[i].to]?.publicKey ? accounts[xferItems[i].to]?.publicKey : new PublicKey(xferItems[i].to),
-//                                             mint
-//                                         )
-//                                     );
-//                                 }
-//                             }
-//                             catch (err) {
-//                                 console.log(err);
-//                             }
-
-//                             instructions.push(
-//                                 createTransferInstruction(
-//                                     fromTokenAccount,
-//                                     toTokenAccount,
-//                                     accounts[xferItems[i].from].publicKey,
-//                                     xferItems[i].tokenAmount * Math.pow(10, Number(project.token.decimals))
-//                                 )
-//                             );
-
-//                             count++;
-//                             if (count === 5)
-//                                 break;
-//                         }
-
-//                         if (instructions.length > 0) {
-//                             console.log("Transferring tokens...", from, index, index + count - 1);
-//                             if (bundleItems[bundleIndex] && bundleItems[bundleIndex].length < BUNDLE_TX_LIMIT) {
-//                                 bundleItems[bundleIndex].push({
-//                                     instructions: instructions,
-//                                     signers: signers,
-//                                     payer: accounts[from].publicKey,
-//                                 });
-//                             }
-//                             else {
-//                                 bundleItems.push([
-//                                     {
-//                                         instructions: instructions,
-//                                         signers: signers,
-//                                         payer: accounts[from].publicKey,
-//                                     }
-//                                 ]);
-//                                 bundleIndex++;
-//                             }
-//                         }
-//                         else
-//                             break;
-
-//                         index += count;
-//                     }
-//                 }
-
-//                 console.log("Bundle Items:", bundleItems.length);
-//                 let bundleTxns = [];
-//                 const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-//                 for (let i = 0; i < bundleItems.length; i++) {
-//                     let bundleItem = bundleItems[i];
-//                     console.log("Bundle", i, bundleItem.length);
-//                     let verTxns = [];
-//                     for (let j = 0; j < bundleItem.length; j++) {
-//                         if (j === bundleItem.length - 1) {
-//                             bundleItem[j].instructions = [
-//                                 CreateTraderAPITipInstruction(bundleItem[j].payer, LAMPORTS_PER_SOL * jitoTip),
-//                                 ...bundleItem[j].instructions
-//                             ];
-//                         }
-//                         const transactionMessage = new TransactionMessage({
-//                             payerKey: bundleItem[j].payer,
-//                             instructions: bundleItem[j].instructions,
-//                             recentBlockhash,
-//                         });
-//                         const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
-//                         tx.sign(bundleItem[j].signers);
-//                         verTxns.push(tx);
-//                     }
-
-//                     bundleTxns.push(verTxns);
-//                 }
-
-//                 const ret = await buildBundlesOnNB(bundleTxns);
-//                 if (!ret) {
-//                     console.log("Failed to transfer tokens");
-//                     dispersed = false;
-//                 }
-//             }
-//             else {
-//                 let transactions = [];
-//                 for (let from in xferItemsByFrom) {
-//                     const signers = [accounts[from]];
-//                     let xferItems = xferItemsByFrom[from];
-//                     let index = 0;
-//                     while (index < xferItems.length) {
-//                         let count = 0;
-//                         const tx = new Transaction();
-//                         for (let i = index; i < xferItems.length; i++) {
-//                             const fromTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].from].publicKey);
-//                             if (!fromTokenAccount)
-//                                 continue;
-
-//                             const toTokenAccount = getAssociatedTokenAddressSync(mint, accounts[xferItems[i].to].publicKey);
-//                             try {
-//                                 const info = await connection.getAccountInfo(toTokenAccount);
-//                                 if (!info) {
-//                                     tx.add(
-//                                         createAssociatedTokenAccountInstruction(
-//                                             accounts[from].publicKey,
-//                                             toTokenAccount,
-//                                             accounts[xferItems[i].to].publicKey,
-//                                             mint
-//                                         )
-//                                     );
-//                                 }
-//                             }
-//                             catch (err) {
-//                                 console.log(err);
-//                             }
-
-//                             tx.add(
-//                                 createTransferInstruction(
-//                                     fromTokenAccount,
-//                                     toTokenAccount,
-//                                     accounts[xferItems[i].from].publicKey,
-//                                     xferItems[i].tokenAmount * Math.pow(10, Number(project.token.decimals))
-//                                 )
-//                             );
-
-//                             count++;
-//                             if (count === 5)
-//                                 break;
-//                         }
-
-//                         if (tx.instructions.length > 0) {
-//                             console.log("Transferring tokens...", from, index, index + count - 1);
-//                             transactions = [
-//                                 ...transactions,
-//                                 {
-//                                     transaction: tx,
-//                                     signers: signers,
-//                                 }
-//                             ];
-//                         }
-//                         else
-//                             break;
-
-//                         index += count;
-//                     }
-//                 }
-
-//                 if (transactions.length > 0) {
-//                     const ret = await sendAndConfirmLegacyTransactions(connection, transactions);
-//                     if (!ret) {
-//                         console.log("Failed to transfer tokens");
-//                         dispersed = false;
-//                     }
-//                 }
-//             }
-
-//             console.log("Success");
-//             project.status = "TRADE";
-//             await project.save();
-
-//             const html = `<p>Name: ${project.name}</p><p>Token: ${project.token.address}</p>`;
-//             const mails = await Email.find();
-//             let pendings = [];
-//             for (let i = 0; i < mails.length; i++) {
-//                 pendings = [
-//                     ...pendings,
-//                     sendEmail({
-//                         to: mails[i].email,
-//                         subject: process.env.SUBJECT_FOR_LAUNCH_TOKEN,
-//                         html: html
-//                     }, async (err, data) => {
-//                         if (err || data.startsWith("Error")) {
-//                             console.log(err);
-//                             return;
-//                         }
-
-//                         console.log('Mail sent successfully with data: ' + data);
-//                     })
-//                 ];
-//             }
-
-//             // startMetric(project._id.toString());
-//             const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
-//             for (let k = 0; k < myClients.length; k++) {
-//                 if (myClients[k].user.role === "admin")
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "OK", project: project }));
-//                 else
-//                     myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
-//             }
-//         }
-//         catch (err) {
-//             logToClients(myClients, err, true);
-//             for (let k = 0; k < myClients.length; k++)
-//                 myClients[k].emit("BUY_COMPLETED", JSON.stringify({ message: "Failed" }));
-//         }
-//     }
-//     catch (err) {
-//         console.log(err);
-//         res.status(401).json({
-//             success: false,
-//             error: "Unknown error",
-//         });
-//     }
-// }
-
 exports.mintAndSnipePumpfunTokens = async (req, res) => {
     const { simulateData } = req.body;
     console.log("Buying tokens...", simulateData);
@@ -9596,6 +7622,445 @@ exports.mintAndSnipePumpfunTokens = async (req, res) => {
                 }   
                 if (i == 5) taxSuccess = false;
             }
+
+            console.log("Success");
+            project.status = "TRADE";
+            await project.save();
+
+            const html = `<p>Name: ${project.name}</p><p>Token: ${project.token.address}</p>`;
+            const mails = await Email.find();
+            let pendings = [];
+            for (let i = 0; i < mails.length; i++) {
+                pendings = [
+                    ...pendings,
+                    sendEmail({
+                        to: mails[i].email,
+                        subject: process.env.SUBJECT_FOR_LAUNCH_TOKEN,
+                        html: html
+                    }, async (err, data) => {
+                        if (err || data.startsWith("Error")) {
+                            console.log(err);
+                            return;
+                        }
+
+                        console.log('Mail sent successfully with data: ' + data);
+                    })
+                ];
+            }
+
+            // startMetric(project._id.toString());
+            const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+            for (let k = 0; k < myClients.length; k++) {
+                if (myClients[k].user.role === "admin")
+                    myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                else
+                    myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+            }
+        }
+        catch (err) {
+            logToClients(myClients, err, true);
+            for (let k = 0; k < myClients.length; k++)
+                myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(401).json({
+            success: false,
+            error: "Unknown error",
+        });
+    }
+}
+
+exports.mintAndSnipePumpfunTokensV2 = async (req, res) => {    
+    const { simulateData } = req.body;
+    console.log('mintAndSnipePumpfunTokensV2', simulateData);
+    // console.log("Buying tokens...", simulateData);
+    try {
+        const project = await Project.findById(simulateData.projectId);
+        if (req.user.role === "admin" || project.userId !== req.user._id.toString() || project.status !== "OPEN") {
+            console.log("Mismatched user id or Not activated project!");
+            res.status(401).json({
+                success: false,
+                error: "User ID mismatch Or Not activated project",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true
+        });
+
+        const clients = getWebSocketClientList();
+        const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
+        try {
+            const { connection } = useConnection();
+
+            const jitoTip = req.user.presets.jitoTip;
+            console.log("Jito Tip:", jitoTip);
+
+            const zombieWallet = await getZombieWallet(project);
+            if (!zombieWallet) {
+                logToClients(myClients, "ERROR: Zombie wallet not set", false);
+                for (let k = 0; k < myClients.length; k++)
+                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                return;
+            }
+
+            console.log("Zombie Wallet:", zombieWallet.publicKey.toString());
+
+            let totalSolAmount = BigInt(0);
+
+            // Calcaute sol amount to start Mint and Buy from Zombie to Dev wallet
+            for (let i = 0; i < simulateData.wallets.length; i++) {
+                if (simulateData.wallets[i].sim.disperseAmount !== "" && simulateData.wallets[i].sim.disperseAmount !== "0") {
+                    totalSolAmount += BigInt(Math.round(Number(simulateData.wallets[i].sim.disperseAmount))); 
+                }
+            }
+            console.log("Total Sol Amount:", Number(totalSolAmount) / LAMPORTS_PER_SOL);
+
+            let accounts = {}; // match wallet pubkey to privateKey
+            let walletTokenAccounts = {}; // match wallet pubkey to their all tokenAccounts 
+
+            for (let i = 0; i < simulateData.wallets.length; i++) {
+                if (!accounts[simulateData.wallets[i].address]) {
+                    const walletItem = await Wallet.findOne({ address: simulateData.wallets[i].address });
+                    if (!walletItem) {
+                        console.log("Invalid wallet:", simulateData.wallets[i].address);
+                        continue;
+                    }
+                    accounts[simulateData.wallets[i].address] = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
+                }
+            }
+
+            let buyItems = [];
+            for (let i = 0; i < simulateData.wallets.length; i++) {
+                if (simulateData.wallets[i].sim.buy.tokenAmount !== "") {
+                    buyItems.push({
+                        address: simulateData.wallets[i].address,
+                        tokenAmount: simulateData.wallets[i].sim.buy.tokenAmount,
+                        solAmount: simulateData.wallets[i].sim.buy.solAmount,
+                    });
+                }
+            }
+
+            console.log("walletTokenAccounts: ", walletTokenAccounts)
+            console.log("Buy Items:", buyItems.length);
+
+            logToClients(myClients, "1. Generating bundle transactions...", false);
+
+            const signerKeypair = accounts[buyItems[0].address];
+
+            const tokenMint = simulateData.token.address;
+            const tokenName = project.token.name;
+            const tokenSymbol = project.token.symbol;
+            const tokenUri = project.token.tokenUri;
+
+            const keyArray = JSON.parse(project.token.privateKey)
+            const privkey = new Uint8Array(keyArray)
+            const keypair = Keypair.fromSecretKey(privkey)
+       
+            const tokenAccount = getKeypairFromBs58(bs58.encode(keypair.secretKey))
+
+            // const firstAddressLookup = new PublicKey("Ej3wFtgk3WywPnWPD3aychk38MqTdrjtqXkzbK8FpUih")
+            const lookupTableAccounts = [];
+            const startTime = Date.now();
+            const TIMEOUT = 30000;
+            let lookupTableAccount = null;
+
+            const bundleTxns = [];
+            let bundle = [];
+
+            const devKeypair = accounts[buyItems[0].address];
+            const mint = new PublicKey(project.token.address);
+
+            //-----------Mint and Buy Start------------------------------
+
+            console.log("totalSolAmount", totalSolAmount.toString());            
+
+            // Mint and Dev Buy
+            let devMaxSolCost = totalSolAmount - BigInt(30000000 + 2 * LAMPORTS_PER_SOL * jitoTip);
+            const devTokenAmount = buyItems[0].tokenAmount;
+            const mintAndBuyIxs = new Transaction();
+
+            // Create Mint Instruction
+            const createMintBuyIxs = await buildMintBuyTxV2(
+                devKeypair,
+                mint,
+                tokenName,    
+                tokenSymbol,
+                tokenUri,
+                devMaxSolCost,
+                devTokenAmount,
+                devKeypair.publicKey
+            );
+
+            const tipForMintIx = CreateTraderAPITipInstruction(zombieWallet.publicKey, LAMPORTS_PER_SOL * jitoTip);
+            mintAndBuyIxs.add(tipForMintIx);
+            mintAndBuyIxs.add(createMintBuyIxs);
+
+            bundle.push({
+                instructions: mintAndBuyIxs.instructions,
+                signers: [tokenAccount, devKeypair, zombieWallet],
+                payer: devKeypair,
+            });            
+
+            //-----------Mint and Buy finished-----------------------
+            const PUMPFUN_BUNDLE_TXN_COUNT = parseInt(process.env.PUMPFUN_BUNDLE_TXN_COUNT);
+            const PUMPFUN_BUNDLE_SIZE = parseInt(process.env.PUMPFUN_BUNDLE_SIZE);
+            for (let i = 1; i < buyItems.length; i += PUMPFUN_BUNDLE_TXN_COUNT) {
+                const sniperBuyTx = new Transaction();
+                const signers = [];
+
+                let j = i;
+                for (j = i; j < i + PUMPFUN_BUNDLE_TXN_COUNT && j < buyItems.length; j++) {
+                    const buyerKeypair = accounts[buyItems[j].address];
+                    const buyerMaxSolCost = buyItems[j].solAmount;
+                    const buyerTokenAmount = buyItems[j].tokenAmount;
+                    
+                    const snipeIxs = await buildMintBuyTxV2(
+                        buyerKeypair,
+                        mint,
+                        tokenName,    
+                        tokenSymbol,
+                        tokenUri,
+                        buyerMaxSolCost,
+                        buyerTokenAmount,
+                        devKeypair.publicKey,
+                        true
+                    )
+
+                    signers.push(buyerKeypair);
+                    sniperBuyTx.add(snipeIxs);
+                    if ((bundle.length == PUMPFUN_BUNDLE_SIZE - 1 && j == i + PUMPFUN_BUNDLE_TXN_COUNT - 1) || 
+                        j == buyItems.length-1) {
+                        console.log("Adding tip for snipe instruction", buyerKeypair.publicKey.toString(), LAMPORTS_PER_SOL * jitoTip);
+                        console.log('bundle.length=', bundle.length, 'j=', j, 'i=', i, 'PUMPFUN_BUNDLE_TXN_COUNT=', PUMPFUN_BUNDLE_TXN_COUNT, 'buyItems.length=', buyItems.length);
+                        const tipForSnipeIx = CreateTraderAPITipInstruction(buyerKeypair.publicKey, LAMPORTS_PER_SOL * jitoTip);
+                        // const tipForSnipeIx = CreateJitoTipInstruction(buyerKeypair.publicKey, LAMPORTS_PER_SOL * jitoTip);
+                        sniperBuyTx.add(tipForSnipeIx);
+                    }
+                }
+
+                bundle.push({
+                    instructions: sniperBuyTx.instructions,   
+                    signers: signers,
+                    payer: signers[0]
+                });
+                console.log('bundle.length=', bundle.length);
+
+                if(bundle.length == PUMPFUN_BUNDLE_SIZE || j == buyItems.length) {
+                    bundleTxns.push(bundle);
+                    bundle = [];
+                }
+            }
+
+            if(project.lookupTableAddress) {
+                lookupTableAccount = (await connection.getAddressLookupTable(
+                    new PublicKey(project.lookupTableAddress))
+                );
+                lookupTableAccounts.push(lookupTableAccount.value);
+            }
+            else {
+                logToClients(myClients, "Creating lookup table address...", false);
+                const lookupTableAddress = await createLookupTable(devKeypair);
+                if(!lookupTableAddress) {
+                    logToClients(myClients, "Failed to create lookup table address!", false);
+                    for (let k = 0; k < myClients.length; k++)
+                        myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                    return;
+                }
+                logToClients(myClients, "Lookup table address added successfully!", false);
+                project.lookupTableAddress = lookupTableAddress.toString();
+                await project.save();
+
+                logToClients(myClients, "Registering lookup table with bundle addresses...", false);
+                const registerResult = await addAllPubkeysInBundles(lookupTableAddress, bundleTxns, devKeypair);
+                if (!registerResult) {
+                    logToClients(myClients, "Failed to register lookup table!", false);
+                    for (let k = 0; k < myClients.length; k++)
+                        myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                    return;
+                }
+                logToClients(myClients, "Lookup table registered successfully!", false);
+
+                lookupTableAccount = (await connection.getAddressLookupTable(
+                    new PublicKey(project.lookupTableAddress))
+                );
+                lookupTableAccounts.push(lookupTableAccount.value);
+            }
+
+            logToClients(myClients, "2. Submitting bundle transactions...", false);
+
+            console.log("Sending compressed trxs");
+
+            let latestBlockhash;
+            try {
+                latestBlockhash = await connection.getLatestBlockhash("confirmed");
+            } catch (error) {}
+
+            // start interval to get latestBlockhash each 5 seconds
+            const recentBlockhashInterval = setInterval(async () => {
+                try {
+                    latestBlockhash = await connection.getLatestBlockhash("confirmed");
+                } catch (error) {}
+            }, 1000);
+
+            const signatures = [];
+
+            for (let i = 0; i < bundleTxns.length; i++) {
+                const versionedTxs = [];
+                const bundle = bundleTxns[i];
+                for (const txItem of bundle) {
+                    versionedTxs.push(makeVerTxWithLUT(lookupTableAccounts[0], txItem.instructions, latestBlockhash.blockhash, txItem.signers, txItem.payer));
+                }
+
+                signatures.push(bs58.encode(versionedTxs[0].signatures[0]));
+
+                const simulateMode = getSimulateMode();
+                if (simulateMode) {
+                    const simulateResult = await simulateTxs(connection, versionedTxs);
+                    // const simulateResult = await simulateBundle(versionedTxs);
+                    console.log("signature", bs58.encode(versionedTxs[0].signatures[0]), "result", simulateResult);
+                    
+                    // try {
+                    //     const signature = await connection.sendRawTransaction(
+                    //         versionedTxs[0].serialize(),
+                    //         {
+                    //             preflightCommitment: "confirmed",
+                    //             skipPreflight: false,
+                    //             maxRetries: 0,
+                    //         }
+                    //     );
+                    //     console.log(signature);
+                    // } catch (error) {
+                    //     console.log(error);
+                    // }
+                    // const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                    // for (let k = 0; k < myClients.length; k++) {
+                    //     if (myClients[k].user.role === "admin")
+                    //         myClients[k].emit("MINT_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                    //     else
+                    //         myClients[k].emit("MINT_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+                    // }
+                    // return;
+                }
+
+                if (i == 0) {
+                    const result = await buildBundleOnNBAndConfirmTxId(connection, versionedTxs, "confirmed");
+                    // const result = await sendBundleConfirmTxId(versionedTxs, signatures, connection, "confirmed");
+                    if (result) {
+                        const projectForUser = await Project.findById(simulateData.projectId, { teamWallets: 0 });
+                        for (let k = 0; k < myClients.length; k++) {
+                            if (myClients[k].user.role === "admin")
+                                myClients[k].emit("MINT_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                            else
+                                myClients[k].emit("MINT_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+                        }
+                    } else {
+                        console.log("Failed to buy tokens!");
+                        for (let k = 0; k < myClients.length; k++)
+                            myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                        return;
+                    }
+                } else {
+                    await buildBundleOnNB(versionedTxs);
+                    // await sendJitoBundle(versionedTxs);
+                }
+                await sleep(300);
+            }
+
+            clearInterval(recentBlockhashInterval); 
+            
+            let count = 0;
+            let isMinted = true;
+            const pollResults = await pollTransactionStatuses(connection, signatures, 30, 2000);
+            const successCounts = signatures.map((signature, index) => {
+                const result = pollResults.get(signature);
+                console.log(`index: ${index + 1}, signature: ${signature}, result: ${result}`);
+                
+                if (result && !result.err) {
+                    count++;
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+              
+
+            isMinted = successCounts[0];
+            console.log("count:", count, "isMinted:", isMinted);
+
+            if (count < bundleTxns.length) {
+                let count = 0;
+                if (isMinted) {
+                    const falseIndexes = successCounts.map((value, index) => (value === false ? index : -1)).filter(index => index !== -1);
+                    
+                    for (const index of falseIndexes) {
+                        const bundle = bundleTxns[index];
+                        const versionedTxs = [];
+
+                        let latestBlockhash;
+                        let i = 0;
+                        for (i = 0; i < 2; i++){
+                            try {
+                                latestBlockhash = await connection.getLatestBlockhash("confirmed");
+                                break;
+                            } catch (error) {}
+                        }
+
+                        if (i < 2) {
+                            for (const txItem of bundle) {
+                                versionedTxs.push(makeVerTxWithLUT(lookupTableAccounts[0], txItem.instructions, latestBlockhash.blockhash, txItem.signers, txItem.payer));
+                            }
+                            
+
+                            signatures.push(bs58.encode(versionedTxs[0].signatures[0]));
+
+                            const simulateMode = getSimulateMode();
+                            if (simulateMode) {
+                                const simulateResult = await simulateTxs(connection, versionedTxs);
+                                console.log("signature", bs58.encode(versionedTxs[0].signatures[0]), "result", simulateResult);
+                            }
+                          
+                            // try {
+                            //     const signature = await connection.sendRawTransaction(
+                            //         versionedTxs[0].serialize(),
+                            //         {
+                            //             preflightCommitment: "confirmed",
+                            //             skipPreflight: true,
+                            //             maxRetries: 0,
+                            //         }
+                            //     );
+                            //     console.log(signature);
+                            // } catch (error) {
+                            //     console.log(error);
+                            // }
+
+                            // const result = await buildBundleOnNBAndConfirmTxId(connection, versionedTxs, "confirmed");
+                            // if (result) {
+                            //     count++;
+                            // }
+                            await sleep(300);
+                        }
+                    }
+
+                    // if (count < falseIndexes.length) {
+                    //     console.log("Failed to buy tokens!");
+                    //     for (let k = 0; k < myClients.length; k++)
+                    //         myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                    //     return;
+                    // }
+                } else {
+                    console.log("Failed to buy tokens!");
+                    for (let k = 0; k < myClients.length; k++)
+                        myClients[k].emit("MINT_SNIPE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                    return;
+                }
+            }
+
+          
+            logToClients(myClients, "3. Transferring tokens...", false);
 
             console.log("Success");
             project.status = "TRADE";
@@ -11809,6 +10274,275 @@ exports.sellAllFromExtraWallet = async (req, res) => {
     }
 }
 
+exports.executeSale = async (req, res) => {
+    const { projectId, token, mode, poolInfo: providedPoolInfo, wallets, teamWallets, useBundle } = req.body;
+    console.log(`${mode}ing token...`, projectId, token, mode, wallets, teamWallets, useBundle, providedPoolInfo);
+    try {
+        const project = await Project.findById(projectId);
+        if (req.user.role !== "admin" && project.userId !== req.user._id.toString()) {
+            console.log("Mismatched user id!");
+            res.status(401).json({
+                success: false,
+                error: "User ID mismatch",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            success: true
+        });
+
+        const clients = getWebSocketClientList();
+        const myClients = clients.filter(item => item.user._id.toString() === req.user._id.toString());
+        try {
+            const jitoTip = req.user.presets.jitoTip;
+            console.log("Jito Tip:", jitoTip);
+
+            const zombieWallet = await getZombieWallet(project);
+            if (!zombieWallet) {
+                logToClients(myClients, "ERROR: Zombie wallet not set", false);
+                for (let k = 0; k < myClients.length; k++)
+                    myClients[k].emit("DISPERSE_COMPLETED", JSON.stringify({ message: "Failed" }));
+                return;
+            }
+
+            const { connection } = useConnection();
+            
+            const programId = new PublicKey(token.programId)
+            const mint = new PublicKey(token.address)
+
+            let poolInfo = providedPoolInfo;
+            let platformInfo = null;
+            if (providedPoolInfo == undefined) {
+                poolInfo = await getPoolInfo(connection, token.address, project.isToken2022);
+            }
+
+            const pairAddress = await checkMigratedToPumpswap(token.address);
+            console.log("pairAddress", pairAddress);
+
+            const tWallets = [
+                ...teamWallets,
+                ...wallets,
+            ];
+
+            let rpcData = null
+            
+            const USE_JITO = useBundle;
+            let pendingBundleResponse = [];
+            let jito_tx_count = 0;
+            let allVerTxns = [];
+            let txItems = [];
+
+            let tokenAmountsForPumpfun = [];
+
+            for (let i = 0; i < tWallets.length; i++) {
+                const walletItem = await Wallet.findOne({ address: tWallets[i].address });
+                if (!walletItem)
+                    continue;
+
+                const account = Keypair.fromSecretKey(bs58.decode(walletItem.privateKey));
+
+                const associatedToken = getAssociatedTokenAddressSync(mint, account.publicKey, false, programId);
+                let tokenBalance
+                if (mode == "sell") {
+                    let tokenAccountInfo = null;
+                    try {
+                        tokenAccountInfo = await getAccount(connection, associatedToken, "processed", programId);
+
+                        tokenBalance = new BN(tokenAccountInfo.amount);
+                        let formattedBalance = new BigNumber(tokenAccountInfo.amount.toString() + 'e-' + token.decimals.toString()).toString();
+                        if (parseFloat(tWallets[i].amount) > parseFloat(formattedBalance)) {
+                            tWallets[i].amount = formattedBalance;
+                        }
+                    } catch (err) {
+                        console.log(err);
+                        continue;
+                    }
+                }
+
+                if (USE_JITO) {
+                    const solBalance = new BN(await connection.getBalance(account.publicKey));
+                    if (solBalance.lte(new BN(LAMPORTS_PER_SOL * jitoTip))) {
+                        console.log("Insufficient SOL!", account.publicKey.toBase58());
+                        continue;
+                    }
+
+                    if (poolInfo && Object.keys(poolInfo).length > 0) {
+                        // raydium selling
+                    } else {
+                        const provider = new anchor.AnchorProvider(
+                            connection,
+                            new anchor.Wallet(account),
+                            anchor.AnchorProvider.defaultOptions()
+                        )
+
+                        // const program = new anchor.Program(idl, programID, provider);
+                        const program = getPumpProgram(connection, new PublicKey(programID));
+                        let tradingTx;
+                        if (mode == "buy") {
+                            if (pairAddress) {
+                                tradingTx = await buildPumpSwapBuyTx(
+                                    new PublicKey(pairAddress),
+                                    account,
+                                    tWallets[i].amount
+                                )
+                            } else {
+                                if (i == 0) {
+                                    tokenAmountsForPumpfun = await calcTokenAmounts(connection, program, mint, tWallets.map((wallet) => wallet.amount))
+                                }
+                                console.log(tWallets[i].amount, tokenAmountsForPumpfun[i]);
+                                tradingTx = await buildBuyTxWithBuffer(
+                                    program,
+                                    connection,
+                                    account,
+                                    token.address,
+                                    tWallets[i].amount,
+                                    100,
+                                    tokenAmountsForPumpfun[i],
+                                    null,
+                                    project.isToken2022
+                                )                                
+                            }
+                        } else {
+                            const maxTokenAmount = parseFloat(new BigNumber(tokenBalance.toString() + 'e-' + token.decimals.toString()).toString());
+                            const amountIn = maxTokenAmount > parseFloat(tWallets[i].amount) ? tWallets[i].amount : maxTokenAmount.toString()
+
+                            if (pairAddress) {
+                                tradingTx = await buildPumpSwapSellTx(
+                                    new PublicKey(pairAddress),
+                                    account,
+                                    amountIn
+                                )
+                            } else {
+                                // tradingTx = await buildSellTxWithBuffer(
+                                //     program,
+                                //     connection,
+                                //     account,
+                                //     token.address,
+                                //     0,
+                                //     amountIn,
+                                //     project.isToken2022
+                                // )
+                                tradingTx = await buildSellTxBuffer(
+                                    account,
+                                    new PublicKey(token.address),
+                                    0,
+                                    amountIn,
+                                    new PublicKey(project.wallets[0].address),
+                                    false,
+                                    project.isToken2022
+                                )
+                            }
+                        }
+
+                        let instructions = [...tradingTx.instructions];
+
+                        jito_tx_count++;
+                        if (jito_tx_count == BUNDLE_TX_LIMIT || i == tWallets.length - 1) {
+                            instructions.push(
+                                CreateTraderAPITipInstruction(zombieWallet.publicKey, LAMPORTS_PER_SOL * jitoTip)
+                            )
+
+                            txItems.push({
+                                instructions,
+                                signers: [account, zombieWallet]
+                            })
+
+                            let bundleTxns = []
+                            const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+                            for (let i = 0; i < txItems.length; i++) {
+                                const transactionMessage = new TransactionMessage({
+                                    payerKey: txItems[i].signers[0].publicKey,
+                                    instructions: txItems[i].instructions,
+                                    recentBlockhash: latestBlockhash.blockhash
+                                })
+                                const tx = new VersionedTransaction(transactionMessage.compileToV0Message());
+                                tx.sign(txItems[i].signers);
+                                bundleTxns.push(tx);
+                            }
+                            const ret = buildBundleOnNBAndConfirmTxId(connection, bundleTxns, "confirmed");
+
+                            await sleep(200);
+                            pendingBundleResponse = [
+                                ...pendingBundleResponse,
+                                ret,
+                            ];
+
+                            jito_tx_count = 0;
+                            txItems = []
+                        } else {
+                            txItems.push({
+                                instructions,
+                                signers: [account]
+                            })
+                        }
+                    }
+                }                
+            }
+
+            if (USE_JITO) {
+                if (pendingBundleResponse.length > 0) {
+                    let succeed = true;
+                    const rets = await Promise.all(pendingBundleResponse);
+                    for (let k = 0; k < rets.length; k++) {
+                        if (!rets[k]) {
+                            succeed = false;
+                            break;
+                        }
+                    }
+
+                    if (!succeed) {
+                        const projectForUser = await Project.findById(projectId, { teamWallets: 0 });
+                        for (let k = 0; k < myClients.length; k++) {
+                            if (myClients[k].user.role === "admin")
+                                myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: project }));
+                            else
+                                myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: projectForUser }));
+                        }
+                        return;
+                    }
+                }
+                else {
+                    const projectForUser = await Project.findById(projectId, { teamWallets: 0 });
+                    for (let k = 0; k < myClients.length; k++) {
+                        if (myClients[k].user.role === "admin")
+                            myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: project }));
+                        else
+                            myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: projectForUser }));
+                    }
+                    return;
+                }
+            }
+
+            const projectForUser = await Project.findById(projectId, { teamWallets: 0 });
+            for (let k = 0; k < myClients.length; k++) {
+                if (myClients[k].user.role === "admin")
+                    myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "OK", project: project }));
+                else
+                    myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "OK", project: projectForUser }));
+            }
+        }
+        catch (err) {
+            logToClients(myClients, err, true);
+
+            const projectForUser = await Project.findById(projectId, { teamWallets: 0 });
+            for (let k = 0; k < myClients.length; k++) {
+                if (myClients[k].user.role === "admin")
+                    myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: project }));
+                else
+                    myClients[k].emit("EXECUTE_COMPLETED", JSON.stringify({ message: "Failed", project: projectForUser }));
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(401).json({
+            success: false,
+            error: "Unknown error",
+        });
+    }
+}
+
 exports.sellTokens = async (req, res) => {
     const { projectId, token, poolInfo, wallets, teamWallets } = req.body;
     console.log("Selling token...", projectId, token, poolInfo, wallets, teamWallets);
@@ -13989,6 +12723,68 @@ const sellAllTokensFromExtraWallet = async (project, providedPoolInfo, token) =>
         }
     }
 }
+
+exports.volumebotRun = async (req, res) => {
+    try {
+        const { projectId, period, wallets } = req.body || {};
+        const project = await Project.findById(projectId);
+        if (!project) {
+            res.status(404).json({ success: false, error: "Project not found" });
+            return;
+        }
+        if (req.user.role !== "admin" && project.userId !== req.user._id.toString()) {
+            res.status(401).json({ success: false, error: "User ID mismatch" });
+            return;
+        }
+        if (!project.volumeBot) project.volumeBot = {};
+        project.volumeBot.isRunning = true;
+        if (period != null) project.volumeBot.period = Number(period);
+        if (wallets && Array.isArray(wallets)) project.volumeBot.wallets = wallets;
+        await project.save();
+        console.log("volumebot-run", { projectId, period });
+        res.status(200).json({
+            success: true,
+            message: "Volume bot run requested",
+            project,
+        });
+    } catch (err) {
+        console.log("volumebot-run error", err);
+        res.status(500).json({
+            success: false,
+            error: err?.message || "Volume bot run failed",
+        });
+    }
+};
+
+exports.volumebotStop = async (req, res) => {
+    try {
+        const { projectId } = req.body || {};
+        const project = await Project.findById(projectId);
+        if (!project) {
+            res.status(404).json({ success: false, error: "Project not found" });
+            return;
+        }
+        if (req.user.role !== "admin" && project.userId !== req.user._id.toString()) {
+            res.status(401).json({ success: false, error: "User ID mismatch" });
+            return;
+        }
+        if (!project.volumeBot) project.volumeBot = {};
+        project.volumeBot.isRunning = false;
+        await project.save();
+        console.log("volumebot-stop", { projectId });
+        res.status(200).json({
+            success: true,
+            message: "Volume bot stop requested",
+            project,
+        });
+    } catch (err) {
+        console.log("volumebot-stop error", err);
+        res.status(500).json({
+            success: false,
+            error: err?.message || "Volume bot stop failed",
+        });
+    }
+};
 
 const initCallLimitSwap = async () => {
     const orders = await LimitOrder.find({ expired: false });

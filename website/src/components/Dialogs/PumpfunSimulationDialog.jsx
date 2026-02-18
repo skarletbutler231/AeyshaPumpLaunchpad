@@ -46,7 +46,7 @@ export default function PumpfunSimulationDialog({ isOpen, zombie, tokenInfo, buy
             <div className="flex flex-col p-6 w-[550px] font-sans">
                 <div className="flex items-center justify-center w-full h-auto px-5 py-3 rounded-t-md">
                     <div className="text-lg font-conthrax text-center font-medium text-white uppercase">
-                        Simulation Result
+                        Pumpfun Simulation Result
                     </div>
                 </div>
                 <div className="flex flex-col w-full h-auto  md:py-0 rounded-b-md">
