@@ -1,0 +1,31 @@
+GENERATE_SOURCEMAP=false
+# Backend Server URL
+VITE_APP_SERVER_URL=
+
+# Solana Devnet Mode
+VITE_APP_DEVNET_MODE=false
+
+# Solana Mainnet RPC URL
+VITE_APP_RPC_URL=
+VITE_APP_WSS_URL=
+
+# NFT Storage Token
+VITE_APP_NFT_STORAGE_TOKEN=
+VITE_APP_PINATA_JWT=
+VITE_APP_PINATA_GATEWAY=
+# Flag to show payment at new project
+VITE_APP_NEW_PROJECT_PAYMENT=false
+
+VITE_APP_FULL_ADMIN=true
+
+VITE_APP_CONTACT=false
+
+VITE_BIRDEYE_APIKEY=
+
+VITE_RPC_ENDPOINT=https://api.mainnet-beta.solana.com
+VITE_RPC_WEBSOCKET_ENDPOINT=wss://api.mainnet-beta.solana.com
+
+VITE_REBRAND=true
+VITE_REBRAND_TITLE="kingpingod"
+
+VITE_APP_RPC_CONCURRENCY=10

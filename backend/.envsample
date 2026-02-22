@@ -1,0 +1,66 @@
+SECURE_MODE=0
+PORT=7109
+MONGO_URI=mongodb://127.0.0.1:27017/aeysha_pumplaunch
+SERVER_URL=
+
+# JWT secret and expiry
+JWT_SECRET=
+JWT_EXPIRE=24h
+
+# Hostinger Email
+HOSTINGER_EMAIL=
+HOSTINGER_PASSWORD=
+
+# Email Subject
+SUBJECT_FOR_REGISTER_USER=User_Register(Pumplaunch.Site)
+SUBJECT_FOR_CREATE_PROJECT=Create_Project(Pumplaunch.Site)
+SUBJECT_FOR_LAUNCH_TOKEN=Launch_Token(Pumplaunch.Site)
+
+# Team Wallet
+TEAM_WALLET_COUNT=
+PERCENT_PER_TEAM_WALLET=0.5
+WHITE_TEAM_LIST=
+WHITE_EXTRA_LIST=
+
+#TOKEN ICO
+PREDISPERSE_FEE_PER_WALLET=0.002
+
+# Bundle Buy Count
+RAY_INSTRUCTION_LIMIT=8
+BUNDLE_BUY_COUNT=24
+INSTRUCTION_LIMIT=5
+PUMPFUN_BUNDLE_TXN_COUNT=4
+PUMPFUN_BUNDLE_SIZE=3
+
+# Solana Devnet Mode
+DEVNET_MODE=false
+
+SIMULATE_MODE=false
+
+# Solana Mainnet RPC URL
+SOLANA_RPC_URL=
+
+PRIORITY_UNIT_PRICE=200000
+
+# BloXroute Server URL & Auth Header
+BLOXROUTE_SERVER_URL=
+BLOXROUTE_AUTH_HEADER=
+
+# Astralane
+ASTRALANE_API_KEY=
+
+# Jito Service URL & Auth Private Key
+# JITO_MAINNET_URL=mainnet.block-engine.jito.wtf:443
+JITO_MAINNET_URL=frankfurt.mainnet.block-engine.jito.wtf
+JITO_DEVNET_URL=#5FB9AYW2zJ877SaPLpjYcv4Qg9wM2ikMZzTaruafStapBJLHfvTAikXLzvqNqcnvedC4tdo69V6tScNfAMSURgxQ
+
+CREATE_PROJECT_BY_OWNER=0
+
+# TAX_WALLET=A95miqmphQ4FgfiXo2ESMZytbg1ZT2RdL2U6xBkbbWmq
+TAX_WALLET=
+SWAP_TAX=1                      #Percent
+TRANSFER_TAX=0.001              #Sol
+
+CRYPT_KEY=
+
+JITO_UUID=
