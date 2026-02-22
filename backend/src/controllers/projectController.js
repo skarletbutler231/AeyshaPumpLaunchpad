@@ -97,7 +97,15 @@ const {
     CreateJitoTipInstruction, 
     sendBundleConfirmTxId 
 } = require("../utils/jito");
-const { createLookupTable, makeVerTxWithLUT, addPoolKeysToTable, addPubKeysToTable, addAllPubkeysInBundles, getLUTAccout, makeVerTx } = require("../utils/lookupTable");
+const { 
+    createLookupTable, 
+    makeVerTxWithLUT, 
+    addPoolKeysToTable, 
+    addPubKeysToTable, 
+    addAllPubkeysInBundles, 
+    getLUTAccout, 
+    makeVerTx 
+} = require("../utils/lookupTable");
 // const { addLog } = require("../utils/log");
 
 const {
@@ -841,7 +849,6 @@ exports.loadAllProjects = async (req, res) => {
                 }
             );
         }
-        console.log("Projects:", projects);
 
         res.status(200).json({
             success: true,

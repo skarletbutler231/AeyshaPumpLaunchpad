@@ -8,7 +8,7 @@ const { DEFAULT_WALLET_AMOUNT } = require("../constants");
 exports.isValidUser = async (req, res, next) => {
     try {
         const { signingData, sigData, inviteCode } = req.body;
-        console.log("inviteCode", inviteCode, signingData)
+        // console.log("inviteCode", inviteCode, signingData)
         let parsedSigningData = signingData;
         let parsedSigData = sigData
         try {

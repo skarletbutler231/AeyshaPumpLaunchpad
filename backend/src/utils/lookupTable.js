@@ -378,7 +378,7 @@ exports.addAllPubkeysInBundles = async (_lookupTablePubkey, _bundles, _signerKey
         return true;
     }
 
-    const result = await exports.addPubKeysToTable(_lookupTablePubkey, allPubkeys, _signerKeypair);
+    const result = await this.addPubKeysToTable(_lookupTablePubkey, allPubkeys, _signerKeypair);
     if (!result) {
         console.log("Error while adding pubkeys ", allPubkeys.length, "to LookupTable ", _lookupTablePubkey, ".");
     }

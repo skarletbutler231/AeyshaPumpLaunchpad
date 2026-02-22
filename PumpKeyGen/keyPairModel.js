@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const pumpKeyPair = new mongoose.Schema({
+const pumpKeyPairSchema = new mongoose.Schema({
     publicKey: String,
     privateKey: String,
     name: String,
@@ -9,7 +9,8 @@ const pumpKeyPair = new mongoose.Schema({
     isUsed: Boolean,
 });
 
-exports.PumpKeyPair = mongoose.model("PumpKeyPair", pumpKeyPair);
+exports.pumpKeyPairSchema = pumpKeyPairSchema;
+exports.PumpKeyPair = mongoose.model("PumpKeyPair", pumpKeyPairSchema);
 
 const bonkKeyPair = new mongoose.Schema({
     publicKey: String,
