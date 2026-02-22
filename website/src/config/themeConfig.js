@@ -2,27 +2,15 @@ import default_mark from "../assets/imgs/mark.png"
 import default_mark_text from "../assets/imgs/mark_text.png"
 import default_menu_mark from "../assets/imgs/mark-white-text.png"
 
-import muscle_mark from "../assets/rebranding/muscle/mark.png"
-import muscle_mark_text from "../assets/rebranding/muscle/mark-text.png"
-import muscle_menu_mark from "../assets/rebranding/muscle/menu-mark.png"
-
 import clickpadfun_mark from "../assets/rebranding/memepad/logo.png"
 import memepadspace_mark from "../assets/rebranding/memepad/logo.png"
-// import clickpadfun_mark_text from "../assets/rebranding/clickpadfun/mark-text.png"
-// import clickpadfun_menu_mark from "../assets/rebranding/clickpadfun/menu-mark.png"
-
 
 const urls = {
     default: {
         logo: "/assets/meme-tools-logo.png",
         mark: "/assets/img/mark.png",
         menuBg: "/assets/img/img_menubg.png",
-    },
-    muscle: {
-        logo: "/assets/rebranding/muscle/logo.png",
-        mark: "/assets/rebranding/muscle/mark.png",
-        menuBg: "/assets/rebranding/muscle/img_menubg.png"
-    },
+    },    
     kingpingod: {
         logo: "/assets/rebranding/memepad/logo.png",
         mark: "/assets/rebranding/memepad/mark.png",

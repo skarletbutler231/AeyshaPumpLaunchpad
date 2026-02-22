@@ -8,7 +8,6 @@ import { FaChevronDown, FaDiscord, FaImage, FaLink, FaTelegram, FaTwitter, FaUpl
 
 import NotifyAddressDialog from "../Dialogs/NotifyAddressDialog";
 import { pinFileToPinata, pinJsonToPinata, pinFileToNFTStorage, pinJsonToNFTStorage } from "../../utils/pinatasdk";
-import etherIcon from '../../assets/images/ethereum.svg'
 // import InstructionPopupDialog from "../components/Dialogs/InstructionPopupDialog";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { AppContext } from "../../App";
