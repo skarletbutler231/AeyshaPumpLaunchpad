@@ -34,7 +34,8 @@ exports.CreateTraderAPITipInstruction = (
     senderAddress,
     tipAmount
 ) => {
-    const tipAddress = new PublicKey(TRADER_API_TIP_WALLET)
+    // const tipAddress = new PublicKey(TRADER_API_TIP_WALLET)
+    const tipAddress = new PublicKey(tipAddresses[getRandomNumber(0, tipAddresses.length - 1)])
 
     return SystemProgram.transfer({
         fromPubkey: senderAddress,

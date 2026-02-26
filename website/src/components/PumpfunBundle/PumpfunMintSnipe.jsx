@@ -203,7 +203,9 @@ export default function PumpfunMintSnipe({ className }) {
             setWalletSolBalance(currentProject.wallets.map(() => "-"));
             setWalletTokenBalance(currentProject.wallets.map(() => "0"));
             setWalletTokenAmount(currentProject.wallets.map((item) => item.initialTokenAmount));
-            setWalletSolAmount(currentProject.wallets.map(item => item.initialSolAmount));
+            setWalletSolAmount(currentProject.wallets.map(item => 
+                (item.sim.disperseAmount > 0) ? 
+                Number(new BigNumber(item.sim.disperseAmount.toString() + "e-9").toString()).toFixed(4) : ""));
         }
         else {
             setWalletSolBalance([]);
@@ -211,7 +213,7 @@ export default function PumpfunMintSnipe({ className }) {
             setWalletTokenAmount([]);
             setWalletSolAmount([]);
         }
-    }, [currentProject.wallets, walletChecked.length]);
+    }, [currentProject, currentProject.wallets, walletChecked.length]);
 
     useEffect(() => {
         if (currentProject.teamWallets) {
@@ -636,7 +638,7 @@ export default function PumpfunMintSnipe({ className }) {
                 return {
                     address: item.address,
                     initialTokenAmount: walletTokenAmount[index],
-                    initialSolAmount: walletSolAmount[index],
+                    initialSolAmount: 0,
                 };
             });
             const { data } = await axios.post(`${SERVER_URL}/api/v1/project/save`,
@@ -904,7 +906,7 @@ export default function PumpfunMintSnipe({ className }) {
             if (walletChecked[i])
                 newWalletSolAmount[i] = amount;
         }
-        setWalletSolAmount(newWalletSolAmount);
+        // setWalletSolAmount(newWalletSolAmount);
         setSolAmountDialog(false);
     };
 
@@ -940,11 +942,6 @@ export default function PumpfunMintSnipe({ className }) {
             let newWalletTokenAmount = [...walletTokenAmount];
             newWalletTokenAmount[index] = value;
             setWalletTokenAmount(newWalletTokenAmount);
-        }
-        else if (key === "sol_amount") {
-            let newWalletSOLAmount = [...walletSolAmount];
-            newWalletSOLAmount[index] = value;
-            setWalletSolAmount(newWalletSOLAmount);
         }
     };
 
@@ -1065,23 +1062,12 @@ export default function PumpfunMintSnipe({ className }) {
 
                 totalTokenAmount += initialTokenAmount;
 
-                if (walletSolAmount[i] == null || walletSolAmount[i] == undefined) {
-                    toast.warn(`Wallet #${i + 1}: Invalid additional SOL amount`);
-                    return;
-                }
-
-                const initialSolAmount = Number(walletSolAmount[i].toString().replaceAll(",", ""));
-                if (isNaN(initialSolAmount) || initialSolAmount < 0) {
-                    toast.warn(`Wallet #${i + 1}: Invalid additional SOL amount`);
-                    return;
-                }
-
                 wallets = [
                     ...wallets,
                     {
                         address: currentProject.wallets[i].address,
                         initialTokenAmount: initialTokenAmount,
-                        initialSolAmount: initialSolAmount,
+                        initialSolAmount: 0,
                     }
                 ];
             }
@@ -1118,7 +1104,6 @@ export default function PumpfunMintSnipe({ className }) {
             }
             setWalletChecked(newWalletChecked);
             setWalletTokenAmount(newWalletAmount);
-            setWalletSolAmount(new Array(currentProject.wallets.length).fill(0));
         }
 
         if (totalTokenAmount > MAX_AMOUNT_ON_CURVE) {
@@ -1155,156 +1140,6 @@ export default function PumpfunMintSnipe({ className }) {
         }
     };
 
-    // const handleDisperseSOL = async () => {
-    //     if (!currentProject.token)
-    //         return;
-
-    //     if (!connected) {
-    //         toast.warn("Please connect wallet!");
-    //         return;
-    //     }
-
-    //     if (!isValidAddress(token)) {
-    //         toast.warn("Invalid token address!");
-    //         return;
-    //     }
-
-    //     if (!isValidAddress(zombieWallet.address)) {
-    //         toast.warn("Invalid zombie wallet!");
-    //         return;
-    //     }
-
-    //     // if (tokenAmount === "" || Number(tokenAmount.replaceAll(",", "")) <= 0) {
-    //     //     toast.warn("Invalid token amount!");
-    //     //     return;
-    //     // }
-
-    //     // if (solAmount === "" || Number(solAmount) <= 0) {
-    //     //     toast.warn("Invalid SOL amount!");
-    //     //     return;
-    //     // }
-
-    //     const validWalletChecked = walletChecked.filter(item => item === true);
-    //     if (validWalletChecked.length === 0) {
-    //         toast.warn("Please check wallets to buy tokens");
-    //         return;
-    //     }
-
-    //     if (!simulateData.zombie) {
-    //         toast.warn("Please simulate first");
-    //         return;
-    //     }
-
-    //     console.log("solAmount", walletSolAmount);
-    //     console.log("tokenAmount", walletTokenAmount);
-
-    //     let wallets = [];
-    //     for (let i = 0; i < currentProject.wallets.length; i++) {
-    //         if (!walletChecked[i])
-    //             continue;
-
-    //         const initialTokenAmount = Number(walletTokenAmount[i].toString().replaceAll(",", ""));
-    //         if (isNaN(initialTokenAmount) || initialTokenAmount <= 0) {
-    //             toast.warn(`Wallet #${i + 1}: Invalid token amount`);
-    //             return;
-    //         }
-
-    //         const initialSolAmount = Number(walletSolAmount[i].toString().replaceAll(",", ""));
-    //         if (isNaN(initialSolAmount) || initialSolAmount < 0) {
-    //             toast.warn(`Wallet #${i + 1}: Invalid additional SOL amount`);
-    //             return;
-    //         }
-
-    //         wallets = [
-    //             ...wallets,
-    //             {
-    //                 address: currentProject.wallets[i].address,
-    //                 initialTokenAmount: initialTokenAmount,
-    //                 initialSolAmount: initialSolAmount,
-    //             }
-    //         ];
-    //     }
-
-    //     let simulated = true;
-    //     if (simulateData.projectId !== currentProject._id) {
-    //         simulated = false;
-    //         console.log("Project id mismatch!");
-    //     }
-
-    //     if (simulated &&
-    //         (!simulateData.zombie ||
-    //             simulateData.zombie.address.toUpperCase() !== zombieWallet.address.toUpperCase())) {
-    //         simulated = false;
-    //         console.log("Zombie wallet mismatch!");
-    //     }
-
-    //     if (simulated && simulateData.wallets) {
-    //         for (let i = 0; i < simulateData.wallets.length; i++) {
-    //             let matched = false;
-    //             const solAmount0 = simulateData.wallets[i].initialSolAmount.toString() === "" ? "0" : simulateData.wallets[i].initialSolAmount.toString();
-    //             for (let j = 0; j < walletTokenAmount.length; j++) {
-    //                 if (simulateData.wallets[i].address.toUpperCase() === currentProject.wallets[j].address.toUpperCase()) {
-    //                     matched = true;
-    //                     const solAmount1 = walletSolAmount[j].toString() === "" ? "0" : walletSolAmount[j].toString();
-    //                     if (!walletChecked[j] ||
-    //                         simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString() ||
-    //                         solAmount0 !== solAmount1) {
-    //                         simulated = false;
-    //                         console.log("Token amount or SOL amount mismatch!",
-    //                             simulateData.wallets.length, walletSolAmount.length,
-    //                             simulateData.wallets[i].initialSolAmount, walletSolAmount[j],
-    //                             simulateData.wallets[i].initialTokenAmount, walletTokenAmount[j]);
-    //                     }
-    //                     break;
-    //                 }
-    //             }
-    //             if (!matched) {
-    //                 simulated = false;
-    //                 console.log("No matched!");
-    //             }
-    //             if (!simulated)
-    //                 break;
-    //         }
-    //     }
-    //     else
-    //         simulated = false;
-
-    //     if (!simulated) {
-    //         toast.warn("Please simulate first");
-    //         return;
-    //     }
-
-    //     if (simulateData.zombie.value !== "0") {
-    //         toast.warn("Please send enough SOL to zombie wallet and simulate again");
-    //         return;
-    //     }
-
-    //     try {
-    //         setLoadingPrompt("Dispersing SOL...");
-    //         setOpenLoading(true);
-
-    //         await axios.post(`${SERVER_URL}/api/v1/project/pumpfun-disperse`,
-    //             {
-    //                 projectId: currentProject._id,
-    //                 simulateData,
-    //                 signingData,
-    //                 sigData
-    //             },
-    //             {
-    //                 headers: {
-    //                     "Content-Type": "application/json",
-    //                     "MW-USER-ID": localStorage.getItem("access-token"),
-    //                 },
-    //             }
-    //         );
-    //     }
-    //     catch (err) {
-    //         console.log(err);
-    //         toast.warn("Failed to simulate!");
-    //         setOpenLoading(false);
-    //     }
-    // };
-
     const handleDisperseSOL = async () => {
         if (!currentProject.token)
             return;
@@ -1323,16 +1158,6 @@ export default function PumpfunMintSnipe({ className }) {
             toast.warn("Invalid zombie wallet!");
             return;
         }
-
-        // if (tokenAmount === "" || Number(tokenAmount.replaceAll(",", "")) <= 0) {
-        //     toast.warn("Invalid token amount!");
-        //     return;
-        // }
-
-        // if (solAmount === "" || Number(solAmount) <= 0) {
-        //     toast.warn("Invalid SOL amount!");
-        //     return;
-        // }
 
         const validWalletChecked = walletChecked.filter(item => item === true);
         if (validWalletChecked.length === 0) {
@@ -1391,18 +1216,14 @@ export default function PumpfunMintSnipe({ className }) {
         if (simulated && simulateData.wallets) {
             for (let i = 0; i < simulateData.wallets.length; i++) {
                 let matched = false;
-                const solAmount0 = simulateData.wallets[i].initialSolAmount.toString() === "" ? "0" : simulateData.wallets[i].initialSolAmount.toString();
                 for (let j = 0; j < walletTokenAmount.length; j++) {
                     if (simulateData.wallets[i].address.toUpperCase() === currentProject.wallets[j].address.toUpperCase()) {
                         matched = true;
-                        const solAmount1 = walletSolAmount[j].toString() === "" ? "0" : walletSolAmount[j].toString();
                         if (!walletChecked[j] ||
-                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString() ||
-                            solAmount0 !== solAmount1) {
+                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString()) {
                             simulated = false;
-                            console.log("Token amount or SOL amount mismatch!",
+                            console.log("Token amount mismatch!",
                                 simulateData.wallets.length, walletSolAmount.length,
-                                simulateData.wallets[i].initialSolAmount, walletSolAmount[j],
                                 simulateData.wallets[i].initialTokenAmount, walletTokenAmount[j]);
                         }
                         break;
@@ -1516,16 +1337,13 @@ export default function PumpfunMintSnipe({ className }) {
         if (simulated && simulateData.wallets) {
             for (let i = 0; i < simulateData.wallets.length; i++) {
                 let matched = false;
-                const solAmount0 = simulateData.wallets[i].initialSolAmount.toString() === "" ? "0" : simulateData.wallets[i].initialSolAmount.toString();
                 for (let j = 0; j < walletTokenAmount.length; j++) {
                     if (simulateData.wallets[i].address.toUpperCase() === currentProject.wallets[j].address.toUpperCase()) {
                         matched = true;
-                        const solAmount1 = walletSolAmount[j].toString() === "" ? "0" : walletSolAmount[j].toString();
                         if (!walletChecked[j] ||
-                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString() ||
-                            solAmount0 !== solAmount1) {
+                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString()) {
                             simulated = false;
-                            console.log("Token amount or SOL amount mismatch!");
+                            console.log("Token amount mismatch!");
                         }
                         break;
                     }
@@ -1638,16 +1456,13 @@ export default function PumpfunMintSnipe({ className }) {
         if (simulated && simulateData.wallets) {
             for (let i = 0; i < simulateData.wallets.length; i++) {
                 let matched = false;
-                const solAmount0 = simulateData.wallets[i].initialSolAmount.toString() === "" ? "0" : simulateData.wallets[i].initialSolAmount.toString();
                 for (let j = 0; j < walletTokenAmount.length; j++) {
                     if (simulateData.wallets[i].address.toUpperCase() === currentProject.wallets[j].address.toUpperCase()) {
                         matched = true;
-                        const solAmount1 = walletSolAmount[j].toString() === "" ? "0" : walletSolAmount[j].toString();
                         if (!walletChecked[j] ||
-                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString() ||
-                            solAmount0 !== solAmount1) {
+                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString()) {
                             simulated = false;
-                            console.log("Token amount or SOL amount mismatch!");
+                            console.log("Token amount mismatch!");
                         }
                         break;
                     }
@@ -1753,16 +1568,13 @@ export default function PumpfunMintSnipe({ className }) {
         if (simulated && simulateData.wallets) {
             for (let i = 0; i < simulateData.wallets.length; i++) {
                 let matched = false;
-                const solAmount0 = simulateData.wallets[i].initialSolAmount.toString() === "" ? "0" : simulateData.wallets[i].initialSolAmount.toString();
                 for (let j = 0; j < walletTokenAmount.length; j++) {
                     if (simulateData.wallets[i].address.toUpperCase() === currentProject.wallets[j].address.toUpperCase()) {
                         matched = true;
-                        const solAmount1 = walletSolAmount[j].toString() === "" ? "0" : walletSolAmount[j].toString();
                         if (!walletChecked[j] ||
-                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString() ||
-                            solAmount0 !== solAmount1) {
+                            simulateData.wallets[i].initialTokenAmount.toString() !== walletTokenAmount[j].toString()) {
                             simulated = false;
-                            console.log("Token amount or SOL amount mismatch!");
+                            console.log("Token amount mismatch!");
                         }
                         break;
                     }
@@ -2121,12 +1933,15 @@ export default function PumpfunMintSnipe({ className }) {
                                                     <th className="w-[15%]">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <p className="leading-none text-center">
-                                                                Additional SOL
+                                                                SOL Needed
                                                             </p>
-                                                            <FaTools
+                                                            {/* <p className="leading-none text-center">
+                                                                Additional SOL
+                                                            </p> */}
+                                                            {/* <FaTools
                                                                 className="p-0.5 text-lg text-green-normal animate-pulse hover:scale-105 active:scale-95 shadow-sm"
                                                                 onClick={handleSetSOLAmounts}
-                                                            />
+                                                            /> */}
                                                         </div>
                                                     </th>
                                                 </tr>
@@ -2233,9 +2048,13 @@ export default function PumpfunMintSnipe({ className }) {
                                                                 <td className="text-center">
                                                                     <input
                                                                         className="outline-none border border-gray-highlight font-medium text-gray-normal placeholder:text-gray-border text-xs px-2.5 bg-transparent text-center w-[100px] h-[26px] rounded-lg"
+                                                                        disabled={true}
+                                                                        value={walletSolAmount[index]}/>
+                                                                    {/* <input
+                                                                        className="outline-none border border-gray-highlight font-medium text-gray-normal placeholder:text-gray-border text-xs px-2.5 bg-transparent text-center w-[100px] h-[26px] rounded-lg"
                                                                         disabled={disabled}
                                                                         value={walletSolAmount[index]}
-                                                                        onChange={(e) => handleWalletChanged(index, "sol_amount", e.target.value)} />
+                                                                        onChange={(e) => handleWalletChanged(index, "sol_amount", e.target.value)} /> */}
                                                                 </td>
                                                             </tr>
                                                         );
